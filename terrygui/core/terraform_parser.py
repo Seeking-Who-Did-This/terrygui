@@ -152,16 +152,16 @@ class TerraformParser:
         """
         # Extract type (default to string if not specified)
         var_type = self._extract_type(config.get('type', 'string'))
-        
+
         # Extract default value
-        default = config.get('default', [None])[0] if 'default' in config else None
-        
+        default = self._unwrap(config.get('default')) if 'default' in config else None
+
         # Extract description
-        description = config.get('description', [''])[0] if 'description' in config else ''
-        
+        description = self._unwrap(config.get('description', ''))
+
         # Extract sensitive flag
-        sensitive = config.get('sensitive', [False])[0] if 'sensitive' in config else False
-        
+        sensitive = self._unwrap(config.get('sensitive', False))
+
         # Extract validation (if present)
         validation = config.get('validation', None)
         
@@ -174,6 +174,13 @@ class TerraformParser:
             validation=validation
         )
     
+    @staticmethod
+    def _unwrap(value: Any) -> Any:
+        """Unwrap a value that may or may not be wrapped in a single-element list by hcl2."""
+        if isinstance(value, list) and len(value) == 1:
+            return value[0]
+        return value
+
     def _extract_type(self, type_value: Any) -> str:
         """
         Extract and normalize Terraform type.
@@ -216,9 +223,9 @@ class TerraformParser:
                         for output_name, output_config in output_block.items():
                             outputs.append({
                                 'name': output_name,
-                                'value': output_config.get('value', [None])[0],
-                                'description': output_config.get('description', [''])[0],
-                                'sensitive': output_config.get('sensitive', [False])[0],
+                                'value': self._unwrap(output_config.get('value')),
+                                'description': self._unwrap(output_config.get('description', '')),
+                                'sensitive': self._unwrap(output_config.get('sensitive', False)),
                             })
             except Exception as e:
                 logger.error(f"Failed to parse outputs from {tf_file}: {e}")
