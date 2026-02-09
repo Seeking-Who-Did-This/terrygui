@@ -18,13 +18,14 @@ from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QAction
 
 from ..config import Settings
-from ..core import TerraformParser, ProjectManager, TerraformRunner, CommandResult, WorkspaceManager
+from ..core import TerraformParser, ProjectManager, TerraformRunner, CommandResult, WorkspaceManager, StateManager
 from ..utils import validate_terraform_installed, validators
 from ..security import InputSanitizer, SecurityError
 
 from .widgets.variable_input import VariablesPanel
 from .widgets.output_viewer import OutputViewerWidget
 from .widgets.workspace_panel import WorkspacePanelWidget
+from .widgets.state_viewer import StateViewerWidget
 from .dialogs.confirm_dialog import ConfirmDialog
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,8 @@ class MainWindow(QMainWindow):
         self.terraform_parser: Optional[TerraformParser] = None
         self.terraform_runner: Optional[TerraformRunner] = None
         self.workspace_manager: Optional[WorkspaceManager] = None
+        self.state_manager: Optional[StateManager] = None
+        self._state_dialog: Optional["QDialog"] = None
 
         # Background operation state
         self._worker: Optional[_OperationWorker] = None
@@ -244,9 +247,20 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        # View menu (placeholder for Phase 5)
-        view_menu = menubar.addMenu("&View")
-        view_menu.setEnabled(False)
+        # View menu
+        self._view_menu = menubar.addMenu("&View")
+
+        self._state_action = QAction("&State Resources", self)
+        self._state_action.setShortcut("Ctrl+Shift+S")
+        self._state_action.triggered.connect(self._show_state_viewer)
+        self._view_menu.addAction(self._state_action)
+
+        self._outputs_action = QAction("&Outputs", self)
+        self._outputs_action.setShortcut("Ctrl+Shift+O")
+        self._outputs_action.triggered.connect(self._show_outputs_viewer)
+        self._view_menu.addAction(self._outputs_action)
+
+        self._view_menu.setEnabled(False)
 
         # Workspace menu
         workspace_menu = menubar.addMenu("&Workspace")
@@ -299,6 +313,9 @@ class MainWindow(QMainWindow):
         # Disable browse/edit while running to prevent project switch mid-operation
         self.browse_button.setEnabled(not running)
         self.edit_button.setEnabled(has_project and not running)
+
+        # View menu requires init to have completed
+        self._view_menu.setEnabled(has_project and self._init_done)
 
     # ------------------------------------------------------------------
     # Terraform operations
@@ -537,6 +554,16 @@ class MainWindow(QMainWindow):
             logger.warning(f"Workspace manager init failed: {e}")
             self.workspace_manager = None
 
+        # State manager
+        try:
+            self.state_manager = StateManager(
+                project_path=safe_path,
+                terraform_binary=terraform_binary,
+            )
+        except Exception as e:
+            logger.warning(f"State manager init failed: {e}")
+            self.state_manager = None
+
         # Parse variables and populate panel
         try:
             variables = self.terraform_parser.parse_variables()
@@ -603,6 +630,48 @@ class MainWindow(QMainWindow):
             "<p>Copyright 2026 TerryGUI Contributors</p>"
             "<p>Licensed under MIT License</p>",
         )
+
+    # ------------------------------------------------------------------
+    # State viewer
+    # ------------------------------------------------------------------
+
+    def _get_or_create_state_dialog(self):
+        """Get or create the state viewer dialog."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout
+
+        if self._state_dialog is not None and self._state_dialog.isVisible():
+            return self._state_dialog
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Terraform State")
+        dialog.resize(700, 500)
+
+        layout = QVBoxLayout(dialog)
+        viewer = StateViewerWidget()
+        layout.addWidget(viewer)
+
+        if self.state_manager:
+            viewer.set_manager(self.state_manager)
+
+        dialog._viewer = viewer
+        self._state_dialog = dialog
+        return dialog
+
+    def _show_state_viewer(self):
+        """Open the state viewer dialog showing Resources."""
+        dialog = self._get_or_create_state_dialog()
+        dialog._viewer._resources_button.setChecked(True)
+        dialog._viewer._on_view_toggled(0)
+        dialog.show()
+        dialog.raise_()
+
+    def _show_outputs_viewer(self):
+        """Open the state viewer dialog showing Outputs."""
+        dialog = self._get_or_create_state_dialog()
+        dialog._viewer._outputs_button.setChecked(True)
+        dialog._viewer._on_view_toggled(1)
+        dialog.show()
+        dialog.raise_()
 
     def closeEvent(self, event):
         """Save state and close."""

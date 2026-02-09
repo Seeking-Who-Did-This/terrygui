@@ -11,6 +11,7 @@ from .terraform_parser import TerraformParser, TerraformVariable
 from .project_manager import ProjectManager
 from .terraform_runner import TerraformRunner, CommandResult
 from .workspace_manager import WorkspaceManager, WorkspaceInfo
+from .state_manager import StateManager, StateResource, StateSummary
 
 __all__ = [
     "TerraformParser",
@@ -20,4 +21,7 @@ __all__ = [
     "CommandResult",
     "WorkspaceManager",
     "WorkspaceInfo",
+    "StateManager",
+    "StateResource",
+    "StateSummary",
 ]
