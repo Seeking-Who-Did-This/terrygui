@@ -42,6 +42,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+tests/fixtures/**/.gitignore
 
 # TerryGUI specific
 *.tfgui
@@ -55,6 +56,10 @@ htmlcov/
 
 # PyInstaller
 *.spec
+terrygui-windows-x86_64/
+terrygui-windows-x86_64.zip
+terrygui-linux-x86_64/
+terrygui-linux-x86_64.zip
 
 # Development notes (not for repository)
 QUICKSTART.md
