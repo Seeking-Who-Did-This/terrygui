@@ -10,6 +10,7 @@ This module provides the business logic for interacting with Terraform:
 from .terraform_parser import TerraformParser, TerraformVariable
 from .project_manager import ProjectManager
 from .terraform_runner import TerraformRunner, CommandResult
+from .workspace_manager import WorkspaceManager, WorkspaceInfo
 
 __all__ = [
     "TerraformParser",
@@ -17,4 +18,6 @@ __all__ = [
     "ProjectManager",
     "TerraformRunner",
     "CommandResult",
+    "WorkspaceManager",
+    "WorkspaceInfo",
 ]

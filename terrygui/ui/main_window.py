@@ -18,12 +18,13 @@ from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QAction
 
 from ..config import Settings
-from ..core import TerraformParser, ProjectManager, TerraformRunner, CommandResult
+from ..core import TerraformParser, ProjectManager, TerraformRunner, CommandResult, WorkspaceManager
 from ..utils import validate_terraform_installed, validators
 from ..security import InputSanitizer, SecurityError
 
 from .widgets.variable_input import VariablesPanel
 from .widgets.output_viewer import OutputViewerWidget
+from .widgets.workspace_panel import WorkspacePanelWidget
 from .dialogs.confirm_dialog import ConfirmDialog
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ class MainWindow(QMainWindow):
         self.project_manager: Optional[ProjectManager] = None
         self.terraform_parser: Optional[TerraformParser] = None
         self.terraform_runner: Optional[TerraformRunner] = None
+        self.workspace_manager: Optional[WorkspaceManager] = None
 
         # Background operation state
         self._worker: Optional[_OperationWorker] = None
@@ -152,6 +154,11 @@ class MainWindow(QMainWindow):
         project_layout.addWidget(self.edit_button)
 
         main_layout.addLayout(project_layout)
+
+        # --- Workspace selector ---
+        self.workspace_panel = WorkspacePanelWidget()
+        self.workspace_panel.workspace_changed.connect(self._on_workspace_changed)
+        main_layout.addWidget(self.workspace_panel)
 
         # --- Variables panel — scales with window, capped to content height ---
         self.variables_panel = VariablesPanel()
@@ -383,9 +390,7 @@ class MainWindow(QMainWindow):
 
     def _on_apply_clicked(self):
         """Show confirmation dialog, then run terraform apply."""
-        workspace = "default"
-        if self.project_manager:
-            workspace = self.project_manager.get_last_workspace()
+        workspace = self.workspace_panel.current_workspace()
 
         dialog = ConfirmDialog(
             operation="apply",
@@ -397,9 +402,7 @@ class MainWindow(QMainWindow):
 
     def _on_destroy_clicked(self):
         """Show confirmation dialog, then run terraform destroy."""
-        workspace = "default"
-        if self.project_manager:
-            workspace = self.project_manager.get_last_workspace()
+        workspace = self.workspace_panel.current_workspace()
 
         dialog = ConfirmDialog(
             operation="destroy",
@@ -408,6 +411,12 @@ class MainWindow(QMainWindow):
         )
         if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
             self._run_operation("destroy")
+
+    def _on_workspace_changed(self, workspace_name: str):
+        """Handle workspace switch from the workspace panel."""
+        if self.project_manager:
+            self.project_manager.set_last_workspace(workspace_name)
+        self.status_bar.showMessage(f"Workspace: {workspace_name}")
 
     # ------------------------------------------------------------------
     # Project loading
