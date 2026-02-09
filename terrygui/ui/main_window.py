@@ -139,16 +139,18 @@ class MainWindow(QMainWindow):
         # --- Splitter: variables (top) / output (bottom) ---
         splitter = QSplitter(Qt.Orientation.Vertical)
 
-        # Variables panel
+        # Variables panel — scales with window height
         self.variables_panel = VariablesPanel()
         splitter.addWidget(self.variables_panel)
 
-        # Output viewer
+        # Output viewer — fixed height with scrollbar
         self.output_viewer = OutputViewerWidget()
+        self.output_viewer.setMinimumHeight(120)
+        self.output_viewer.setMaximumHeight(200)
         splitter.addWidget(self.output_viewer)
 
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 2)
+        splitter.setStretchFactor(0, 1)  # variables expand
+        splitter.setStretchFactor(1, 0)  # output stays fixed
         main_layout.addWidget(splitter, stretch=1)
 
         # --- Operation buttons row ---
