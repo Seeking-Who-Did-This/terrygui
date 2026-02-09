@@ -599,12 +599,43 @@ class MainWindow(QMainWindow):
     # Misc
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _resolve_editor_command(configured: str) -> str:
+        """Resolve the editor command for the current platform."""
+        import shutil
+        import sys
+
+        # If the user configured a specific path/command, use it as-is
+        if configured != "code":
+            return configured
+
+        # "code" works directly on Linux/macOS (symlinked into PATH)
+        if sys.platform != "win32":
+            return "code"
+
+        # On Windows, "code" is a .cmd wrapper that doesn't work with
+        # subprocess when shell=False.  Try the standard install location.
+        userprofile = os.environ.get("USERPROFILE", "")
+        candidate = os.path.join(
+            userprofile, "AppData", "Local", "Programs",
+            "Microsoft VS Code", "Code.exe",
+        )
+        if os.path.isfile(candidate):
+            return candidate
+
+        # Fallback: check if "code" is resolvable via PATH anyway
+        if shutil.which("code"):
+            return shutil.which("code")
+
+        return configured
+
     def _on_edit_project(self):
         """Open project in configured external editor."""
         if not self.current_project_path:
             return
 
-        editor_command = self.settings.get("editor_command", "code")
+        configured = self.settings.get("editor_command", "code")
+        editor_command = self._resolve_editor_command(configured)
 
         try:
             import subprocess
@@ -615,7 +646,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self, "Editor Error",
                 f"Failed to open project in editor:\n{str(e)}\n\n"
-                f"Make sure '{editor_command}' is installed and in PATH.",
+                f"Make sure '{configured}' is installed and in PATH.",
             )
 
     def _show_about(self):
