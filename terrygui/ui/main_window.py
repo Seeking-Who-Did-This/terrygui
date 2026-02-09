@@ -19,6 +19,7 @@ from PySide6.QtGui import QAction
 
 from ..config import Settings
 from ..core import TerraformParser, ProjectManager, TerraformRunner, CommandResult, WorkspaceManager, StateManager
+from ..core.tfvars_handler import TfvarsHandler
 from ..utils import validate_terraform_installed, validators
 from ..security import InputSanitizer, SecurityError
 
@@ -27,6 +28,7 @@ from .widgets.output_viewer import OutputViewerWidget
 from .widgets.workspace_panel import WorkspacePanelWidget
 from .widgets.state_viewer import StateViewerWidget
 from .dialogs.confirm_dialog import ConfirmDialog
+from .dialogs.settings_dialog import SettingsDialog
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +185,8 @@ class MainWindow(QMainWindow):
         buttons_layout = QHBoxLayout()
 
         self.init_button = QPushButton("Init")
-        self.init_button.setToolTip("Run terraform init")
+        self.init_button.setToolTip("Run terraform init (Ctrl+I)")
+        self.init_button.setShortcut("Ctrl+I")
         self.init_button.clicked.connect(lambda: self._run_operation("init"))
         buttons_layout.addWidget(self.init_button)
 
@@ -193,12 +196,14 @@ class MainWindow(QMainWindow):
         buttons_layout.addWidget(self.validate_button)
 
         self.plan_button = QPushButton("Plan")
-        self.plan_button.setToolTip("Run terraform plan")
+        self.plan_button.setToolTip("Run terraform plan (Ctrl+P)")
+        self.plan_button.setShortcut("Ctrl+P")
         self.plan_button.clicked.connect(lambda: self._run_operation("plan"))
         buttons_layout.addWidget(self.plan_button)
 
         self.apply_button = QPushButton("Apply")
-        self.apply_button.setToolTip("Run terraform apply (with confirmation)")
+        self.apply_button.setToolTip("Run terraform apply (Ctrl+Shift+A)")
+        self.apply_button.setShortcut("Ctrl+Shift+A")
         self.apply_button.clicked.connect(self._on_apply_clicked)
         buttons_layout.addWidget(self.apply_button)
 
@@ -240,12 +245,34 @@ class MainWindow(QMainWindow):
         open_action.triggered.connect(self._on_browse_project)
         file_menu.addAction(open_action)
 
+        import_action = QAction("&Import .tfvars...", self)
+        import_action.triggered.connect(self._on_import_tfvars)
+        file_menu.addAction(import_action)
+
+        export_action = QAction("&Export .tfvars...", self)
+        export_action.triggered.connect(self._on_export_tfvars)
+        file_menu.addAction(export_action)
+
+        file_menu.addSeparator()
+
+        # Recent Projects submenu
+        self._recent_menu = file_menu.addMenu("Recent Projects")
+        self._recent_menu.aboutToShow.connect(self._rebuild_recent_menu)
+
         file_menu.addSeparator()
 
         exit_action = QAction("E&xit", self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        # Edit menu
+        edit_menu = menubar.addMenu("&Edit")
+
+        prefs_action = QAction("&Preferences...", self)
+        prefs_action.setShortcut("Ctrl+,")
+        prefs_action.triggered.connect(self._on_preferences)
+        edit_menu.addAction(prefs_action)
 
         # View menu
         self._view_menu = menubar.addMenu("&View")
@@ -259,6 +286,13 @@ class MainWindow(QMainWindow):
         self._outputs_action.setShortcut("Ctrl+Shift+O")
         self._outputs_action.triggered.connect(self._show_outputs_viewer)
         self._view_menu.addAction(self._outputs_action)
+
+        self._view_menu.addSeparator()
+
+        refresh_action = QAction("&Refresh Project", self)
+        refresh_action.setShortcut("F5")
+        refresh_action.triggered.connect(self._on_refresh_project)
+        self._view_menu.addAction(refresh_action)
 
         self._view_menu.setEnabled(False)
 
@@ -422,28 +456,30 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Cancelling...")
 
     def _on_apply_clicked(self):
-        """Show confirmation dialog, then run terraform apply."""
-        workspace = self.workspace_panel.current_workspace()
-
-        dialog = ConfirmDialog(
-            operation="apply",
-            details={"workspace": workspace},
-            parent=self,
-        )
-        if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
-            self._run_operation("apply")
+        """Show confirmation dialog (if enabled), then run terraform apply."""
+        if self.settings.get("confirmations.apply", True):
+            workspace = self.workspace_panel.current_workspace()
+            dialog = ConfirmDialog(
+                operation="apply",
+                details={"workspace": workspace},
+                parent=self,
+            )
+            if dialog.exec() != ConfirmDialog.DialogCode.Accepted:
+                return
+        self._run_operation("apply")
 
     def _on_destroy_clicked(self):
-        """Show confirmation dialog, then run terraform destroy."""
-        workspace = self.workspace_panel.current_workspace()
-
-        dialog = ConfirmDialog(
-            operation="destroy",
-            details={"workspace": workspace},
-            parent=self,
-        )
-        if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
-            self._run_operation("destroy")
+        """Show confirmation dialog (if enabled), then run terraform destroy."""
+        if self.settings.get("confirmations.destroy", True):
+            workspace = self.workspace_panel.current_workspace()
+            dialog = ConfirmDialog(
+                operation="destroy",
+                details={"workspace": workspace},
+                parent=self,
+            )
+            if dialog.exec() != ConfirmDialog.DialogCode.Accepted:
+                return
+        self._run_operation("destroy")
 
     def _on_workspace_changed(self, workspace_name: str):
         """Handle workspace switch from the workspace panel."""
@@ -599,43 +635,12 @@ class MainWindow(QMainWindow):
     # Misc
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _resolve_editor_command(configured: str) -> str:
-        """Resolve the editor command for the current platform."""
-        import shutil
-        import sys
-
-        # If the user configured a specific path/command, use it as-is
-        if configured != "code":
-            return configured
-
-        # "code" works directly on Linux/macOS (symlinked into PATH)
-        if sys.platform != "win32":
-            return "code"
-
-        # On Windows, "code" is a .cmd wrapper that doesn't work with
-        # subprocess when shell=False.  Try the standard install location.
-        userprofile = os.environ.get("USERPROFILE", "")
-        candidate = os.path.join(
-            userprofile, "AppData", "Local", "Programs",
-            "Microsoft VS Code", "Code.exe",
-        )
-        if os.path.isfile(candidate):
-            return candidate
-
-        # Fallback: check if "code" is resolvable via PATH anyway
-        if shutil.which("code"):
-            return shutil.which("code")
-
-        return configured
-
     def _on_edit_project(self):
         """Open project in configured external editor."""
         if not self.current_project_path:
             return
 
-        configured = self.settings.get("editor_command", "code")
-        editor_command = self._resolve_editor_command(configured)
+        editor_command = self.settings.get("editor_command", "code")
 
         try:
             import subprocess
@@ -646,7 +651,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self, "Editor Error",
                 f"Failed to open project in editor:\n{str(e)}\n\n"
-                f"Make sure '{configured}' is installed and in PATH.",
+                f"Make sure '{editor_command}' is installed and in PATH.",
             )
 
     def _show_about(self):
@@ -661,6 +666,141 @@ class MainWindow(QMainWindow):
             "<p>Copyright 2026 TerryGUI Contributors</p>"
             "<p>Licensed under MIT License</p>",
         )
+
+    # ------------------------------------------------------------------
+    # Import / Export .tfvars
+    # ------------------------------------------------------------------
+
+    def _on_import_tfvars(self):
+        """Import variable values from a .tfvars file."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import .tfvars File",
+            self.current_project_path or os.path.expanduser("~"),
+            "Terraform Variable Files (*.tfvars *.tfvars.json);;All Files (*)",
+        )
+        if not file_path:
+            return
+
+        try:
+            values = TfvarsHandler.parse_tfvars(file_path)
+            count = self.variables_panel.set_values(values)
+            self.status_bar.showMessage(
+                f"Imported {count} variable(s) from {os.path.basename(file_path)}"
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self, "Import Error",
+                f"Failed to import .tfvars file:\n{str(e)}",
+            )
+
+    def _on_export_tfvars(self):
+        """Export non-sensitive variable values to a .tfvars file."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export .tfvars File",
+            os.path.join(
+                self.current_project_path or os.path.expanduser("~"),
+                "terraform.tfvars",
+            ),
+            "Terraform Variable Files (*.tfvars);;All Files (*)",
+        )
+        if not file_path:
+            return
+
+        try:
+            values = self.variables_panel.get_non_sensitive_values()
+            sensitive = self.variables_panel.get_sensitive_names()
+            TfvarsHandler.write_tfvars(file_path, values, sensitive)
+            self.status_bar.showMessage(
+                f"Exported {len(values)} variable(s) to {os.path.basename(file_path)}"
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self, "Export Error",
+                f"Failed to export .tfvars file:\n{str(e)}",
+            )
+
+    # ------------------------------------------------------------------
+    # Recent projects
+    # ------------------------------------------------------------------
+
+    def _rebuild_recent_menu(self):
+        """Rebuild the Recent Projects submenu."""
+        self._recent_menu.clear()
+        recent = self.settings.get_recent_projects()
+
+        if not recent:
+            placeholder = QAction("(No recent projects)", self)
+            placeholder.setEnabled(False)
+            self._recent_menu.addAction(placeholder)
+            return
+
+        for path in recent:
+            action = QAction(path, self)
+            action.triggered.connect(lambda checked, p=path: self._open_recent_project(p))
+            self._recent_menu.addAction(action)
+
+        self._recent_menu.addSeparator()
+        clear_action = QAction("Clear Recent Projects", self)
+        clear_action.triggered.connect(self._clear_recent_projects)
+        self._recent_menu.addAction(clear_action)
+
+    def _open_recent_project(self, path: str):
+        """Open a project from the recent projects list."""
+        if not os.path.exists(path):
+            QMessageBox.warning(
+                self, "Project Not Found",
+                f"The project directory no longer exists:\n{path}",
+            )
+            return
+        try:
+            self._load_project(path)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error Loading Project",
+                f"Failed to load project:\n{str(e)}",
+            )
+
+    def _clear_recent_projects(self):
+        """Clear the recent projects list."""
+        self.settings.set("recent_projects", [])
+        self.settings.save()
+
+    # ------------------------------------------------------------------
+    # Preferences
+    # ------------------------------------------------------------------
+
+    def _on_preferences(self):
+        """Open the settings dialog."""
+        dialog = SettingsDialog(self.settings, parent=self)
+        if dialog.exec() == SettingsDialog.DialogCode.Accepted:
+            # Re-check terraform availability with possibly changed binary
+            self._check_terraform_installed()
+
+    # ------------------------------------------------------------------
+    # Refresh
+    # ------------------------------------------------------------------
+
+    def _on_refresh_project(self):
+        """Re-parse variables and refresh workspace list."""
+        if not self.current_project_path:
+            return
+
+        # Re-parse variables
+        if self.terraform_parser:
+            try:
+                variables = self.terraform_parser.parse_variables()
+                current_values = self.variables_panel.get_non_sensitive_values()
+                self.variables_panel.load_variables(variables, current_values)
+            except Exception as e:
+                logger.error(f"Failed to refresh variables: {e}")
+
+        # Refresh workspace list
+        if self.workspace_manager:
+            self.workspace_panel.refresh()
+
+        self.status_bar.showMessage("Project refreshed")
 
     # ------------------------------------------------------------------
     # State viewer

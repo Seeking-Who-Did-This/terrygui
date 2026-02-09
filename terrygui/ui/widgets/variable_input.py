@@ -338,6 +338,27 @@ class VariablesPanel(QWidget):
                     values[name] = val
         return values
 
+    def get_sensitive_names(self) -> set[str]:
+        """Return the set of variable names that are marked sensitive."""
+        return {name for name, w in self._widgets.items() if w.variable.sensitive}
+
+    def set_values(self, values: dict) -> int:
+        """
+        Set values on matching variable widgets.
+
+        Args:
+            values: Dict of variable name to value.
+
+        Returns:
+            Number of variables that were set.
+        """
+        count = 0
+        for name, value in values.items():
+            if name in self._widgets:
+                self._widgets[name].set_value(value)
+                count += 1
+        return count
+
     def all_valid(self) -> bool:
         """Return True if all variable inputs pass validation."""
         return all(w.is_valid() for w in self._widgets.values())
