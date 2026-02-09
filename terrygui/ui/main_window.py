@@ -282,23 +282,47 @@ class MainWindow(QMainWindow):
         thread = QThread()
         worker.moveToThread(thread)
 
-        # Connect signals
+        # Connect signals — ordering matters for cleanup:
+        # 1. thread.started → worker.run (kick off the work)
+        # 2. worker.line_output → relay to UI
+        # 3. worker.finished → store result and ask thread to quit
+        # 4. thread.finished → clean up worker and thread safely
         thread.started.connect(worker.run)
         worker.line_output.connect(self._relay_output)
-        worker.finished.connect(lambda result: self._on_operation_finished(result))
+        worker.finished.connect(self._store_result)
         worker.finished.connect(thread.quit)
-        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._on_thread_finished)
 
         self._worker = worker
         self._worker_thread = thread
+        self._pending_result: Optional[CommandResult] = None
         self._update_button_states()
 
         thread.start()
 
+    def _store_result(self, result: CommandResult):
+        """Stash the result so _on_thread_finished can use it."""
+        self._pending_result = result
+
+    def _on_thread_finished(self):
+        """Clean up worker and thread after the thread has fully stopped."""
+        result = self._pending_result
+        self._pending_result = None
+
+        # Clean up: move worker back to main thread before deletion
+        if self._worker is not None:
+            self._worker.moveToThread(self.thread())
+            self._worker.deleteLater()
+            self._worker = None
+        if self._worker_thread is not None:
+            self._worker_thread.deleteLater()
+            self._worker_thread = None
+
+        if result is not None:
+            self._on_operation_finished(result)
+
     def _on_operation_finished(self, result: CommandResult):
         """Handle completion of a background terraform operation."""
-        self._worker = None
-        self._worker_thread = None
 
         if result.success:
             self.status_bar.showMessage(
@@ -390,8 +414,8 @@ class MainWindow(QMainWindow):
                 "Directory does not appear to be a Terraform project (no .tf files found)"
             )
 
-        # Reset state for new project
-        self._init_done = False
+        # Detect if project has already been initialized (.terraform dir exists)
+        self._init_done = os.path.isdir(os.path.join(safe_path, ".terraform"))
         self.current_project_path = safe_path
         self.project_path_edit.setText(safe_path)
 
