@@ -27,7 +27,7 @@ A Qt-based GUI for managing Terraform projects.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/terrygui.git
+git clone https://github.com/Seeking-Who-Did-This/terrygui.git
 cd terrygui
 
 # Install dependencies
@@ -39,7 +39,7 @@ python main.py
 
 ### Pre-built Binaries
 
-Download pre-built binaries from the [Releases](https://github.com/yourusername/terrygui/releases) page:
+Download pre-built binaries from the [Releases](https://github.com/Seeking-Who-Did-This/terrygui/releases) page:
 - `terrygui-linux-x86_64` - Linux standalone executable
 - `terrygui-windows-x86_64.exe` - Windows standalone executable
 

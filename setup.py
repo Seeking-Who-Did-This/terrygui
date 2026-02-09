@@ -16,7 +16,7 @@ setup(
     description="A professional Qt-based GUI for managing Terraform projects",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/terrygui",
+    url="https://github.com/Seeking-Who-Did-This/terrygui",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
