@@ -12,7 +12,7 @@ from typing import Optional
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QFileDialog,
-    QStatusBar, QMessageBox, QCheckBox, QSplitter,
+    QStatusBar, QMessageBox, QCheckBox, QFrame,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QAction
@@ -136,22 +136,21 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(project_layout)
 
-        # --- Splitter: variables (top) / output (bottom) ---
-        splitter = QSplitter(Qt.Orientation.Vertical)
-
-        # Variables panel — scales with window height
+        # --- Variables panel — scales with window, capped to content height ---
         self.variables_panel = VariablesPanel()
-        splitter.addWidget(self.variables_panel)
+        main_layout.addWidget(self.variables_panel, stretch=1)
 
-        # Output viewer — fixed height with scrollbar
+        # Visual divider
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setFrameShadow(QFrame.Shadow.Sunken)
+        main_layout.addWidget(divider)
+
+        # --- Output viewer — fixed height with scrollbar ---
         self.output_viewer = OutputViewerWidget()
         self.output_viewer.setMinimumHeight(120)
         self.output_viewer.setMaximumHeight(200)
-        splitter.addWidget(self.output_viewer)
-
-        splitter.setStretchFactor(0, 1)  # variables expand
-        splitter.setStretchFactor(1, 0)  # output stays fixed
-        main_layout.addWidget(splitter, stretch=1)
+        main_layout.addWidget(self.output_viewer)
 
         # --- Operation buttons row ---
         buttons_layout = QHBoxLayout()

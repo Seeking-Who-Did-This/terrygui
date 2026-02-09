@@ -252,6 +252,10 @@ class VariablesPanel(QWidget):
         self._empty_label.setStyleSheet("color: gray; padding: 20px;")
         self._container_layout.insertWidget(0, self._empty_label)
 
+        # Per-variable row height estimate (label + input + margins)
+        self._row_height = 40
+        self._header_height = 30
+
     def load_variables(self, variables: list[TerraformVariable],
                        saved_values: Optional[dict] = None):
         """
@@ -289,6 +293,18 @@ class VariablesPanel(QWidget):
                 if name in self._widgets and not self._widgets[name].variable.sensitive:
                     self._widgets[name].set_value(value)
 
+        self._update_max_height()
+
+    def _update_max_height(self):
+        """Set maximum height to fit content without excess empty space."""
+        count = len(self._widgets)
+        if count == 0:
+            self.setMaximumHeight(self._header_height + 60)  # placeholder text
+        else:
+            self.setMaximumHeight(
+                self._header_height + (count * self._row_height) + 20
+            )
+
     def clear(self):
         """Remove all variable input widgets."""
         for widget in self._widgets.values():
@@ -297,6 +313,7 @@ class VariablesPanel(QWidget):
         self._widgets.clear()
         self._empty_label.setText("No project loaded")
         self._empty_label.show()
+        self._update_max_height()
 
     def get_all_values(self) -> dict[str, Any]:
         """Return a dict of variable name -> current value for non-empty fields."""
