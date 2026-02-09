@@ -131,6 +131,53 @@ class TestPlanCommand:
             assert "-var" not in cmd
 
 
+class TestApplyCommand:
+    def test_apply_command_structure(self, runner, tf_dir):
+        with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "apply")) as mock_exec:
+            runner.apply(variables={"region": "us-east-1"})
+            cmd = mock_exec.call_args[0][0]
+            assert "apply" in cmd
+            assert "-input=false" in cmd
+            assert "-no-color" in cmd
+            assert "-var" in cmd
+            assert "region=us-east-1" in cmd
+
+    def test_apply_auto_approve(self, runner):
+        with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "apply")) as mock_exec:
+            runner.apply(auto_approve=True)
+            cmd = mock_exec.call_args[0][0]
+            assert "-auto-approve" in cmd
+
+    def test_apply_no_auto_approve(self, runner):
+        with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "apply")) as mock_exec:
+            runner.apply()
+            cmd = mock_exec.call_args[0][0]
+            assert "-auto-approve" not in cmd
+
+
+class TestDestroyCommand:
+    def test_destroy_command_structure(self, runner, tf_dir):
+        with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "destroy")) as mock_exec:
+            runner.destroy(variables={"region": "us-east-1"})
+            cmd = mock_exec.call_args[0][0]
+            assert "destroy" in cmd
+            assert "-input=false" in cmd
+            assert "-no-color" in cmd
+            assert "-var" in cmd
+
+    def test_destroy_auto_approve(self, runner):
+        with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "destroy")) as mock_exec:
+            runner.destroy(auto_approve=True)
+            cmd = mock_exec.call_args[0][0]
+            assert "-auto-approve" in cmd
+
+    def test_destroy_no_variables(self, runner):
+        with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "destroy")) as mock_exec:
+            runner.destroy()
+            cmd = mock_exec.call_args[0][0]
+            assert "-var" not in cmd
+
+
 # ---------------------------------------------------------------------------
 # Execution tests (mocked subprocess)
 # ---------------------------------------------------------------------------

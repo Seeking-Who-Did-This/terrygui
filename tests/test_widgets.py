@@ -206,3 +206,65 @@ class TestOutputViewerWidget:
         plain = viewer.get_text()
         assert "\x1b" not in plain
         assert "Success" in plain
+
+
+# ---------------------------------------------------------------------------
+# ConfirmDialog tests
+# ---------------------------------------------------------------------------
+
+class TestConfirmDialog:
+    @needs_qt
+    def test_apply_dialog_button_disabled_initially(self, qtbot):
+        from terrygui.ui.dialogs.confirm_dialog import ConfirmDialog
+        dialog = ConfirmDialog("apply", {"workspace": "default"})
+        qtbot.addWidget(dialog)
+        assert not dialog._action_button.isEnabled()
+
+    @needs_qt
+    def test_apply_dialog_button_enables_on_check(self, qtbot):
+        from terrygui.ui.dialogs.confirm_dialog import ConfirmDialog
+        from PySide6.QtCore import Qt
+        dialog = ConfirmDialog("apply", {"workspace": "default"})
+        qtbot.addWidget(dialog)
+        dialog._ack_checkbox.setCheckState(Qt.CheckState.Checked)
+        assert dialog._action_button.isEnabled()
+
+    @needs_qt
+    def test_apply_dialog_button_text(self, qtbot):
+        from terrygui.ui.dialogs.confirm_dialog import ConfirmDialog
+        dialog = ConfirmDialog("apply")
+        qtbot.addWidget(dialog)
+        assert dialog._action_button.text() == "Continue"
+
+    @needs_qt
+    def test_destroy_dialog_button_text(self, qtbot):
+        from terrygui.ui.dialogs.confirm_dialog import ConfirmDialog
+        dialog = ConfirmDialog("destroy")
+        qtbot.addWidget(dialog)
+        assert dialog._action_button.text() == "Destroy"
+
+    @needs_qt
+    def test_destroy_dialog_shows_workspace(self, qtbot):
+        from terrygui.ui.dialogs.confirm_dialog import ConfirmDialog
+        dialog = ConfirmDialog("destroy", {"workspace": "production"})
+        qtbot.addWidget(dialog)
+        # The workspace should appear somewhere in the dialog
+        # Check by looking at all labels
+        found = False
+        from PySide6.QtWidgets import QLabel
+        for label in dialog.findChildren(QLabel):
+            if "production" in label.text():
+                found = True
+                break
+        assert found
+
+    @needs_qt
+    def test_checkbox_uncheck_disables_button(self, qtbot):
+        from terrygui.ui.dialogs.confirm_dialog import ConfirmDialog
+        from PySide6.QtCore import Qt
+        dialog = ConfirmDialog("apply")
+        qtbot.addWidget(dialog)
+        dialog._ack_checkbox.setCheckState(Qt.CheckState.Checked)
+        assert dialog._action_button.isEnabled()
+        dialog._ack_checkbox.setCheckState(Qt.CheckState.Unchecked)
+        assert not dialog._action_button.isEnabled()

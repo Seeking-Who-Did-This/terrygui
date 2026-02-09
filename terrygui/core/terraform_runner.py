@@ -1,8 +1,9 @@
 """
 Terraform command execution with real-time output streaming.
 
-This module provides secure execution of Terraform commands (init, validate, plan)
-with output redaction, streaming callbacks, and process management.
+This module provides secure execution of Terraform commands
+(init, validate, plan, apply, destroy) with output redaction,
+streaming callbacks, and process management.
 """
 
 import subprocess
@@ -111,6 +112,44 @@ class TerraformRunner:
             cmd.append(f"-out={out_file}")
 
         return self._execute(cmd, "plan", output_callback)
+
+    def apply(
+        self,
+        variables: Optional[Dict[str, Any]] = None,
+        var_types: Optional[Dict[str, str]] = None,
+        auto_approve: bool = False,
+        output_callback: Optional[Callable[[str], None]] = None,
+    ) -> CommandResult:
+        """Run terraform apply."""
+        cmd = self._build_base_command("apply")
+        cmd.extend(["-input=false", "-no-color"])
+
+        if auto_approve:
+            cmd.append("-auto-approve")
+
+        if variables:
+            self._add_variables(cmd, variables, var_types or {})
+
+        return self._execute(cmd, "apply", output_callback)
+
+    def destroy(
+        self,
+        variables: Optional[Dict[str, Any]] = None,
+        var_types: Optional[Dict[str, str]] = None,
+        auto_approve: bool = False,
+        output_callback: Optional[Callable[[str], None]] = None,
+    ) -> CommandResult:
+        """Run terraform destroy."""
+        cmd = self._build_base_command("destroy")
+        cmd.extend(["-input=false", "-no-color"])
+
+        if auto_approve:
+            cmd.append("-auto-approve")
+
+        if variables:
+            self._add_variables(cmd, variables, var_types or {})
+
+        return self._execute(cmd, "destroy", output_callback)
 
     def _build_base_command(self, operation: str) -> List[str]:
         """Construct the base command list [binary, -chdir=path, operation]."""

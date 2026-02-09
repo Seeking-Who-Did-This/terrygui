@@ -24,6 +24,7 @@ from ..security import InputSanitizer, SecurityError
 
 from .widgets.variable_input import VariablesPanel
 from .widgets.output_viewer import OutputViewerWidget
+from .dialogs.confirm_dialog import ConfirmDialog
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +41,14 @@ class _OperationWorker(QObject):
 
     def __init__(self, runner: TerraformRunner, operation: str,
                  variables: Optional[dict] = None,
-                 var_types: Optional[dict] = None):
+                 var_types: Optional[dict] = None,
+                 auto_approve: bool = False):
         super().__init__()
         self.runner = runner
         self.operation = operation
         self.variables = variables
         self.var_types = var_types
+        self.auto_approve = auto_approve
 
     def run(self):
         """Execute the operation and emit result when done."""
@@ -58,6 +61,20 @@ class _OperationWorker(QObject):
                 result = self.runner.plan(
                     variables=self.variables or {},
                     var_types=self.var_types or {},
+                    output_callback=self.line_output.emit,
+                )
+            elif self.operation == "apply":
+                result = self.runner.apply(
+                    variables=self.variables or {},
+                    var_types=self.var_types or {},
+                    auto_approve=self.auto_approve,
+                    output_callback=self.line_output.emit,
+                )
+            elif self.operation == "destroy":
+                result = self.runner.destroy(
+                    variables=self.variables or {},
+                    var_types=self.var_types or {},
+                    auto_approve=self.auto_approve,
                     output_callback=self.line_output.emit,
                 )
             else:
@@ -170,6 +187,16 @@ class MainWindow(QMainWindow):
         self.plan_button.clicked.connect(lambda: self._run_operation("plan"))
         buttons_layout.addWidget(self.plan_button)
 
+        self.apply_button = QPushButton("Apply")
+        self.apply_button.setToolTip("Run terraform apply (with confirmation)")
+        self.apply_button.clicked.connect(self._on_apply_clicked)
+        buttons_layout.addWidget(self.apply_button)
+
+        self.destroy_button = QPushButton("Destroy")
+        self.destroy_button.setToolTip("Run terraform destroy (with confirmation)")
+        self.destroy_button.clicked.connect(self._on_destroy_clicked)
+        buttons_layout.addWidget(self.destroy_button)
+
         buttons_layout.addStretch()
 
         self.cancel_button = QPushButton("Cancel")
@@ -236,7 +263,7 @@ class MainWindow(QMainWindow):
         State machine:
         - No project loaded: all disabled
         - Project loaded, init not run: only Init enabled
-        - Init succeeded: Init, Validate, Plan enabled
+        - Init succeeded: Init, Validate, Plan, Apply, Destroy enabled
         - Operation running: all disabled, Cancel enabled
         """
         running = self._worker_thread is not None and self._worker_thread.isRunning()
@@ -245,6 +272,8 @@ class MainWindow(QMainWindow):
         self.init_button.setEnabled(has_project and not running)
         self.validate_button.setEnabled(has_project and self._init_done and not running)
         self.plan_button.setEnabled(has_project and self._init_done and not running)
+        self.apply_button.setEnabled(has_project and self._init_done and not running)
+        self.destroy_button.setEnabled(has_project and self._init_done and not running)
         self.cancel_button.setEnabled(running)
 
         # Disable browse/edit while running to prevent project switch mid-operation
@@ -266,19 +295,24 @@ class MainWindow(QMainWindow):
 
         variables = None
         var_types = None
-        if operation == "plan":
+        auto_approve = False
+        if operation in ("plan", "apply", "destroy"):
             if not self.variables_panel.all_valid():
                 QMessageBox.warning(
                     self, "Validation Error",
-                    "Please fix variable validation errors before running plan.",
+                    "Please fix variable validation errors before running "
+                    f"{operation}.",
                 )
                 return
             variables = self.variables_panel.get_all_values()
             var_types = self.variables_panel.get_var_types()
+        if operation in ("apply", "destroy"):
+            auto_approve = True  # confirmation was already given via dialog
 
         worker = _OperationWorker(
             self.terraform_runner, operation,
             variables=variables, var_types=var_types,
+            auto_approve=auto_approve,
         )
         thread = QThread()
         worker.moveToThread(thread)
@@ -346,6 +380,34 @@ class MainWindow(QMainWindow):
         if self.terraform_runner:
             self.terraform_runner.cancel()
         self.status_bar.showMessage("Cancelling...")
+
+    def _on_apply_clicked(self):
+        """Show confirmation dialog, then run terraform apply."""
+        workspace = "default"
+        if self.project_manager:
+            workspace = self.project_manager.get_last_workspace()
+
+        dialog = ConfirmDialog(
+            operation="apply",
+            details={"workspace": workspace},
+            parent=self,
+        )
+        if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
+            self._run_operation("apply")
+
+    def _on_destroy_clicked(self):
+        """Show confirmation dialog, then run terraform destroy."""
+        workspace = "default"
+        if self.project_manager:
+            workspace = self.project_manager.get_last_workspace()
+
+        dialog = ConfirmDialog(
+            operation="destroy",
+            details={"workspace": workspace},
+            parent=self,
+        )
+        if dialog.exec() == ConfirmDialog.DialogCode.Accepted:
+            self._run_operation("destroy")
 
     # ------------------------------------------------------------------
     # Project loading
