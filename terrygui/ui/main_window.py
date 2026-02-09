@@ -248,9 +248,22 @@ class MainWindow(QMainWindow):
         view_menu = menubar.addMenu("&View")
         view_menu.setEnabled(False)
 
-        # Workspace menu (placeholder for Phase 4)
+        # Workspace menu
         workspace_menu = menubar.addMenu("&Workspace")
-        workspace_menu.setEnabled(False)
+
+        new_ws_action = QAction("&New Workspace...", self)
+        new_ws_action.triggered.connect(lambda: self.workspace_panel._on_new_clicked())
+        workspace_menu.addAction(new_ws_action)
+
+        delete_ws_action = QAction("&Delete Workspace...", self)
+        delete_ws_action.triggered.connect(lambda: self.workspace_panel._on_delete_clicked())
+        workspace_menu.addAction(delete_ws_action)
+
+        workspace_menu.addSeparator()
+
+        refresh_ws_action = QAction("&Refresh List", self)
+        refresh_ws_action.triggered.connect(lambda: self.workspace_panel.refresh())
+        workspace_menu.addAction(refresh_ws_action)
 
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -372,6 +385,9 @@ class MainWindow(QMainWindow):
             )
             if result.command == "init":
                 self._init_done = True
+                # Refresh workspace list now that init has run
+                if self.workspace_manager:
+                    self.workspace_panel.refresh()
         else:
             self.status_bar.showMessage(
                 f"terraform {result.command} failed (exit code {result.exit_code})"
@@ -509,6 +525,17 @@ class MainWindow(QMainWindow):
             )
         except SecurityError as e:
             raise ValueError(f"Failed to create runner: {e}")
+
+        # Workspace manager
+        try:
+            self.workspace_manager = WorkspaceManager(
+                project_path=safe_path,
+                terraform_binary=terraform_binary,
+            )
+            self.workspace_panel.set_manager(self.workspace_manager)
+        except Exception as e:
+            logger.warning(f"Workspace manager init failed: {e}")
+            self.workspace_manager = None
 
         # Parse variables and populate panel
         try:
