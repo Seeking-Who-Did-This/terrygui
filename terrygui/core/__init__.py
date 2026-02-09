@@ -9,5 +9,12 @@ This module provides the business logic for interacting with Terraform:
 
 from .terraform_parser import TerraformParser, TerraformVariable
 from .project_manager import ProjectManager
+from .terraform_runner import TerraformRunner, CommandResult
 
-__all__ = ["TerraformParser", "TerraformVariable", "ProjectManager"]
+__all__ = [
+    "TerraformParser",
+    "TerraformVariable",
+    "ProjectManager",
+    "TerraformRunner",
+    "CommandResult",
+]
