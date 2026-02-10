@@ -139,19 +139,18 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # --- Variables panel — scales with window ---
-        self.variables_panel = VariablesPanel()
-        main_layout.addWidget(self.variables_panel, stretch=1)
-
-        # --- Project info bar (workspace + path), fixed height ---
+        # --- Project info bar (workspace + path), fixed height, anchored top ---
         self._info_label = QLabel("No project loaded")
         self._info_label.setFixedHeight(28)
         self._info_label.setStyleSheet(
             "color: gray; padding: 2px 8px; background: palette(alternate-base);"
         )
-        from PySide6.QtCore import Qt as QtConstants
-        self._info_label.setTextFormat(QtConstants.TextFormat.PlainText)
+        self._info_label.setTextFormat(Qt.TextFormat.PlainText)
         main_layout.addWidget(self._info_label)
+
+        # --- Variables panel — scales with window ---
+        self.variables_panel = VariablesPanel()
+        main_layout.addWidget(self.variables_panel, stretch=1)
 
         # Visual divider
         divider = QFrame()
