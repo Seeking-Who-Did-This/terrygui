@@ -25,7 +25,6 @@ from ..security import InputSanitizer, SecurityError
 
 from .widgets.variable_input import VariablesPanel
 from .widgets.output_viewer import OutputViewerWidget
-from .widgets.workspace_panel import WorkspacePanelWidget
 from .widgets.state_viewer import StateViewerWidget
 from .dialogs.confirm_dialog import ConfirmDialog
 from .dialogs.settings_dialog import SettingsDialog
@@ -160,14 +159,16 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(project_layout)
 
-        # --- Workspace selector ---
-        self.workspace_panel = WorkspacePanelWidget()
-        self.workspace_panel.workspace_changed.connect(self._on_workspace_changed)
-        main_layout.addWidget(self.workspace_panel)
-
         # --- Variables panel — scales with window, capped to content height ---
         self.variables_panel = VariablesPanel()
         main_layout.addWidget(self.variables_panel, stretch=1)
+
+        # --- Project info bar (workspace + path) ---
+        self._info_label = QLabel("No project loaded")
+        self._info_label.setStyleSheet(
+            "color: gray; padding: 4px 8px; background: palette(alternate-base);"
+        )
+        main_layout.addWidget(self._info_label)
 
         # Visual divider
         divider = QFrame()
@@ -299,18 +300,18 @@ class MainWindow(QMainWindow):
         # Workspace menu
         workspace_menu = menubar.addMenu("&Workspace")
 
-        new_ws_action = QAction("&New Workspace...", self)
-        new_ws_action.triggered.connect(lambda: self.workspace_panel._on_new_clicked())
+        new_ws_action = QAction("&New workspace in project...", self)
+        new_ws_action.triggered.connect(self._on_new_workspace)
         workspace_menu.addAction(new_ws_action)
 
-        delete_ws_action = QAction("&Delete Workspace...", self)
-        delete_ws_action.triggered.connect(lambda: self.workspace_panel._on_delete_clicked())
+        delete_ws_action = QAction("&Delete workspace in project...", self)
+        delete_ws_action.triggered.connect(self._on_delete_workspace)
         workspace_menu.addAction(delete_ws_action)
 
         workspace_menu.addSeparator()
 
         refresh_ws_action = QAction("&Refresh List", self)
-        refresh_ws_action.triggered.connect(lambda: self.workspace_panel.refresh())
+        refresh_ws_action.triggered.connect(self._refresh_workspace_info)
         workspace_menu.addAction(refresh_ws_action)
 
         # Help menu
@@ -436,9 +437,7 @@ class MainWindow(QMainWindow):
             )
             if result.command == "init":
                 self._init_done = True
-                # Refresh workspace list now that init has run
-                if self.workspace_manager:
-                    self.workspace_panel.refresh()
+                self._refresh_workspace_info()
         else:
             self.status_bar.showMessage(
                 f"terraform {result.command} failed (exit code {result.exit_code})"
@@ -458,7 +457,7 @@ class MainWindow(QMainWindow):
     def _on_apply_clicked(self):
         """Show confirmation dialog (if enabled), then run terraform apply."""
         if self.settings.get("confirmations.apply", True):
-            workspace = self.workspace_panel.current_workspace()
+            workspace = self._current_workspace()
             dialog = ConfirmDialog(
                 operation="apply",
                 details={"workspace": workspace},
@@ -471,7 +470,7 @@ class MainWindow(QMainWindow):
     def _on_destroy_clicked(self):
         """Show confirmation dialog (if enabled), then run terraform destroy."""
         if self.settings.get("confirmations.destroy", True):
-            workspace = self.workspace_panel.current_workspace()
+            workspace = self._current_workspace()
             dialog = ConfirmDialog(
                 operation="destroy",
                 details={"workspace": workspace},
@@ -481,11 +480,60 @@ class MainWindow(QMainWindow):
                 return
         self._run_operation("destroy")
 
-    def _on_workspace_changed(self, workspace_name: str):
-        """Handle workspace switch from the workspace panel."""
-        if self.project_manager:
-            self.project_manager.set_last_workspace(workspace_name)
-        self.status_bar.showMessage(f"Workspace: {workspace_name}")
+    def _current_workspace(self) -> str:
+        """Return the current workspace name from the manager."""
+        if self.workspace_manager:
+            return self.workspace_manager.get_current_workspace()
+        return "default"
+
+    def _update_info_label(self):
+        """Update the project info bar with workspace and path."""
+        if not self.current_project_path:
+            self._info_label.setText("No project loaded")
+            return
+        workspace = self._current_workspace()
+        self._info_label.setText(
+            f"Workspace: {workspace}  |  Project: {self.current_project_path}"
+        )
+
+    def _refresh_workspace_info(self):
+        """Refresh workspace info from terraform and update the info bar."""
+        self._update_info_label()
+
+    def _on_new_workspace(self):
+        """Open dialog to create a new workspace."""
+        from .dialogs.workspace_dialog import WorkspaceDialog
+
+        dialog = WorkspaceDialog("create", parent=self)
+        if dialog.exec() == WorkspaceDialog.DialogCode.Accepted:
+            name = dialog.workspace_name()
+            if name and self.workspace_manager:
+                success = self.workspace_manager.create_workspace(name)
+                if success:
+                    if self.project_manager:
+                        self.project_manager.set_last_workspace(name)
+                    self._update_info_label()
+
+    def _on_delete_workspace(self):
+        """Open dialog to confirm workspace deletion."""
+        from .dialogs.workspace_dialog import WorkspaceDialog
+
+        current = self._current_workspace()
+        if not current or current == "default":
+            QMessageBox.information(
+                self, "Cannot Delete",
+                "The default workspace cannot be deleted.",
+            )
+            return
+
+        dialog = WorkspaceDialog("delete", workspace_name_value=current, parent=self)
+        if dialog.exec() == WorkspaceDialog.DialogCode.Accepted:
+            if self.workspace_manager:
+                self.workspace_manager.switch_workspace("default")
+                self.workspace_manager.delete_workspace(current)
+                if self.project_manager:
+                    self.project_manager.set_last_workspace("default")
+                self._update_info_label()
 
     # ------------------------------------------------------------------
     # Project loading
@@ -585,7 +633,6 @@ class MainWindow(QMainWindow):
                 project_path=safe_path,
                 terraform_binary=terraform_binary,
             )
-            self.workspace_panel.set_manager(self.workspace_manager)
         except Exception as e:
             logger.warning(f"Workspace manager init failed: {e}")
             self.workspace_manager = None
@@ -623,6 +670,7 @@ class MainWindow(QMainWindow):
 
         self.edit_button.setEnabled(True)
         self._update_button_states()
+        self._update_info_label()
 
         # Persist
         self.settings.add_recent_project(safe_path)
@@ -800,10 +848,7 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 logger.error(f"Failed to refresh variables: {e}")
 
-        # Refresh workspace list
-        if self.workspace_manager:
-            self.workspace_panel.refresh()
-
+        self._update_info_label()
         self.status_bar.showMessage("Project refreshed")
 
     # ------------------------------------------------------------------
