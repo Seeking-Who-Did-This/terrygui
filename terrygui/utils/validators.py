@@ -24,11 +24,13 @@ def validate_terraform_installed(terraform_binary: str = "terraform") -> Tuple[b
     
     # Try to get version
     try:
+        from . import subprocess_creation_flags
         result = subprocess.run(
             [terraform_binary, "version"],
             capture_output=True,
             text=True,
             timeout=5,
+            creationflags=subprocess_creation_flags(),
         )
         
         if result.returncode == 0:

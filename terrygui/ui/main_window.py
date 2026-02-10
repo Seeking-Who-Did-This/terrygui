@@ -644,7 +644,11 @@ class MainWindow(QMainWindow):
 
         try:
             import subprocess
-            subprocess.Popen([editor_command, self.current_project_path])
+            from ..utils import subprocess_creation_flags
+            subprocess.Popen(
+                [editor_command, self.current_project_path],
+                creationflags=subprocess_creation_flags(),
+            )
             logger.info(f"Opened project in {editor_command}")
         except Exception as e:
             logger.error(f"Failed to open editor: {e}")

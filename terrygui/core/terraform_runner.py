@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from ..security.sanitizer import InputSanitizer, SecurityError
 from ..security.secure_memory import OutputRedactor
+from ..utils import subprocess_creation_flags
 
 
 @dataclass
@@ -196,6 +197,7 @@ class TerraformRunner:
                 stderr=subprocess.PIPE,
                 text=True,
                 shell=False,
+                creationflags=subprocess_creation_flags(),
             )
 
             def _read_stderr():

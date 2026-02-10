@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from ..security.sanitizer import InputSanitizer, SecurityError
+from ..utils import subprocess_creation_flags
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class WorkspaceManager:
                 text=True,
                 timeout=timeout,
                 shell=False,
+                creationflags=subprocess_creation_flags(),
             )
             return result.returncode, result.stdout, result.stderr
         except subprocess.TimeoutExpired:
