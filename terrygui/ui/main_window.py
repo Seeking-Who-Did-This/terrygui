@@ -251,18 +251,17 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        prefs_action = QAction("Edit &Preferences...", self)
+        prefs_action.setShortcut("Ctrl+,")
+        prefs_action.triggered.connect(self._on_preferences)
+        file_menu.addAction(prefs_action)
+
+        file_menu.addSeparator()
+
         exit_action = QAction("E&xit", self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
-
-        # Edit menu
-        edit_menu = menubar.addMenu("&Edit")
-
-        prefs_action = QAction("&Preferences...", self)
-        prefs_action.setShortcut("Ctrl+,")
-        prefs_action.triggered.connect(self._on_preferences)
-        edit_menu.addAction(prefs_action)
 
         # View menu
         self._view_menu = menubar.addMenu("&View")

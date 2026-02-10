@@ -11,7 +11,7 @@ long_description = readme_file.read_text() if readme_file.exists() else ""
 
 setup(
     name="terrygui",
-    version="1.0.0",
+    version="0.9.0",
     author="TerryGUI Contributors",
     description="A professional Qt-based GUI for managing Terraform projects",
     long_description=long_description,
@@ -44,7 +44,7 @@ setup(
         ],
     },
     entry_points={
-        "console_scripts": [
+        "gui_scripts": [
             "terrygui=terrygui.main:main",
         ],
     },

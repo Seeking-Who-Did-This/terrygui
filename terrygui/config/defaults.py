@@ -5,7 +5,7 @@ These are the default values used when no user configuration exists.
 """
 
 DEFAULT_SETTINGS = {
-    "version": "1.0.0",
+    "version": "0.9.0",
     
     # Recent projects
     "recent_projects": [],

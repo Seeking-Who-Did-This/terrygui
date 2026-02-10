@@ -230,6 +230,7 @@ class VariablesPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._header = QLabel("Variables")
+        self._header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._header.setStyleSheet("font-weight: bold; padding: 4px;")
         layout.addWidget(self._header)
 
@@ -270,13 +271,13 @@ class VariablesPanel(QWidget):
         if not variables:
             self._empty_label.setText("No variables defined")
             self._empty_label.show()
-            self._header.setText("Variables (0)")
+            self._header.setText("[ Project contains 0 variables ]")
             return
 
         self._empty_label.hide()
         sensitive_count = sum(1 for v in variables if v.sensitive)
         self._header.setText(
-            f"Variables ({len(variables)}, {sensitive_count} sensitive)"
+            f"[ Project contains {len(variables)} variables ({sensitive_count} sensitive) ]"
         )
 
         for var in variables:
