@@ -11,7 +11,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QLineEdit, QFileDialog,
+    QLabel, QPushButton, QFileDialog,
     QStatusBar, QMessageBox, QCheckBox, QFrame,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
@@ -139,35 +139,18 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # --- Project selector row ---
-        project_layout = QHBoxLayout()
-        project_layout.addWidget(QLabel("Project:"))
-
-        self.project_path_edit = QLineEdit()
-        self.project_path_edit.setReadOnly(True)
-        self.project_path_edit.setPlaceholderText("No project loaded")
-        project_layout.addWidget(self.project_path_edit)
-
-        self.browse_button = QPushButton("Browse")
-        self.browse_button.clicked.connect(self._on_browse_project)
-        project_layout.addWidget(self.browse_button)
-
-        self.edit_button = QPushButton("Edit")
-        self.edit_button.clicked.connect(self._on_edit_project)
-        self.edit_button.setEnabled(False)
-        project_layout.addWidget(self.edit_button)
-
-        main_layout.addLayout(project_layout)
-
-        # --- Variables panel — scales with window, capped to content height ---
+        # --- Variables panel — scales with window ---
         self.variables_panel = VariablesPanel()
         main_layout.addWidget(self.variables_panel, stretch=1)
 
-        # --- Project info bar (workspace + path) ---
+        # --- Project info bar (workspace + path), fixed height ---
         self._info_label = QLabel("No project loaded")
+        self._info_label.setFixedHeight(28)
         self._info_label.setStyleSheet(
-            "color: gray; padding: 4px 8px; background: palette(alternate-base);"
+            "color: gray; padding: 2px 8px; background: palette(alternate-base);"
         )
+        from PySide6.QtCore import Qt as QtConstants
+        self._info_label.setTextFormat(QtConstants.TextFormat.PlainText)
         main_layout.addWidget(self._info_label)
 
         # Visual divider
@@ -241,10 +224,17 @@ class MainWindow(QMainWindow):
         # File menu
         file_menu = menubar.addMenu("&File")
 
-        open_action = QAction("&Open Project...", self)
-        open_action.setShortcut("Ctrl+O")
-        open_action.triggered.connect(self._on_browse_project)
-        file_menu.addAction(open_action)
+        browse_action = QAction("&Browse project...", self)
+        browse_action.setShortcut("Ctrl+O")
+        browse_action.triggered.connect(self._on_browse_project)
+        file_menu.addAction(browse_action)
+
+        edit_action = QAction("&Edit project in editor", self)
+        edit_action.setShortcut("Ctrl+E")
+        edit_action.triggered.connect(self._on_edit_project)
+        file_menu.addAction(edit_action)
+
+        file_menu.addSeparator()
 
         import_action = QAction("&Import .tfvars...", self)
         import_action.triggered.connect(self._on_import_tfvars)
@@ -344,10 +334,6 @@ class MainWindow(QMainWindow):
         self.apply_button.setEnabled(has_project and self._init_done and not running)
         self.destroy_button.setEnabled(has_project and self._init_done and not running)
         self.cancel_button.setEnabled(running)
-
-        # Disable browse/edit while running to prevent project switch mid-operation
-        self.browse_button.setEnabled(not running)
-        self.edit_button.setEnabled(has_project and not running)
 
         # View menu requires init to have completed
         self._view_menu.setEnabled(has_project and self._init_done)
@@ -606,7 +592,6 @@ class MainWindow(QMainWindow):
         # Detect if project has already been initialized (.terraform dir exists)
         self._init_done = os.path.isdir(os.path.join(safe_path, ".terraform"))
         self.current_project_path = safe_path
-        self.project_path_edit.setText(safe_path)
 
         # Project manager (persistence)
         self.project_manager = ProjectManager(safe_path)
@@ -668,7 +653,6 @@ class MainWindow(QMainWindow):
                 f"Project loaded but failed to parse some variables:\n{str(e)}",
             )
 
-        self.edit_button.setEnabled(True)
         self._update_button_states()
         self._update_info_label()
 
