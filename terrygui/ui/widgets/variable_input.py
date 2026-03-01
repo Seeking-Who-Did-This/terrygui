@@ -106,7 +106,7 @@ class VariableInputWidget(QWidget):
             self._input.textChanged.connect(self._on_text_changed)
             layout.addWidget(self._input)
 
-        elif var_type in ("list", "map", "object"):
+        elif var_type in ("list", "map", "object", "set", "tuple"):
             self._input = QTextEdit()
             self._input.setPlaceholderText(f'{var_type} (JSON format)')
             self._input.setMaximumHeight(80)
@@ -132,7 +132,7 @@ class VariableInputWidget(QWidget):
         if var_type == "bool":
             checked = default is True or str(default).lower() in ("true", "1")
             self._input.setChecked(checked)
-        elif var_type in ("list", "map", "object"):
+        elif var_type in ("list", "map", "object", "set", "tuple"):
             import json
             if isinstance(default, str):
                 self._input.setPlainText(default)
@@ -186,7 +186,7 @@ class VariableInputWidget(QWidget):
 
         if var_type == "bool":
             return self._input.isChecked()
-        elif var_type in ("list", "map", "object"):
+        elif var_type in ("list", "map", "object", "set", "tuple"):
             return self._input.toPlainText().strip()
         else:
             return self._input.text().strip()
@@ -198,7 +198,7 @@ class VariableInputWidget(QWidget):
         if var_type == "bool":
             checked = value is True or str(value).lower() in ("true", "1")
             self._input.setChecked(checked)
-        elif var_type in ("list", "map", "object"):
+        elif var_type in ("list", "map", "object", "set", "tuple"):
             import json
             if isinstance(value, str):
                 self._input.setPlainText(value)

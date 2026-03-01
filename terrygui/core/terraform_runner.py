@@ -6,6 +6,7 @@ This module provides secure execution of Terraform commands
 streaming callbacks, and process management.
 """
 
+import os
 import subprocess
 import threading
 from dataclasses import dataclass
@@ -71,7 +72,7 @@ class TerraformRunner:
     ) -> CommandResult:
         """Run terraform init."""
         cmd = self._build_base_command("init")
-        cmd.extend(["-input=false", "-no-color"])
+        cmd.append("-input=false")
 
         if backend_config:
             for key, value in backend_config.items():
@@ -90,7 +91,6 @@ class TerraformRunner:
     ) -> CommandResult:
         """Run terraform validate."""
         cmd = self._build_base_command("validate")
-        cmd.append("-no-color")
         return self._execute(cmd, "validate", output_callback)
 
     def plan(
@@ -102,7 +102,7 @@ class TerraformRunner:
     ) -> CommandResult:
         """Run terraform plan."""
         cmd = self._build_base_command("plan")
-        cmd.extend(["-input=false", "-no-color"])
+        cmd.append("-input=false")
 
         if variables:
             self._add_variables(cmd, variables, var_types or {})
@@ -123,7 +123,7 @@ class TerraformRunner:
     ) -> CommandResult:
         """Run terraform apply."""
         cmd = self._build_base_command("apply")
-        cmd.extend(["-input=false", "-no-color"])
+        cmd.append("-input=false")
 
         if auto_approve:
             cmd.append("-auto-approve")
@@ -142,7 +142,7 @@ class TerraformRunner:
     ) -> CommandResult:
         """Run terraform destroy."""
         cmd = self._build_base_command("destroy")
-        cmd.extend(["-input=false", "-no-color"])
+        cmd.append("-input=false")
 
         if auto_approve:
             cmd.append("-auto-approve")
@@ -191,12 +191,19 @@ class TerraformRunner:
         stderr_lines: List[str] = []
 
         try:
+            # Force color output so ANSI codes are emitted even without a TTY
+            env = os.environ.copy()
+            env["CLICOLOR_FORCE"] = "1"
+
             self._process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 shell=False,
+                env=env,
                 creationflags=subprocess_creation_flags(),
             )
 

@@ -8,6 +8,7 @@ outputs, and other configuration information.
 import glob
 import os
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
 import hcl2
@@ -181,24 +182,39 @@ class TerraformParser:
             return value[0]
         return value
 
+    # Regex to extract base type from hcl2 type expressions like "${list(string)}"
+    _TYPE_PATTERN = re.compile(r'\$\{(\w+)\(')
+
     def _extract_type(self, type_value: Any) -> str:
         """
         Extract and normalize Terraform type.
-        
+
+        hcl2 returns parameterized types like list(string), map(number), etc.
+        as "${list(string)}". This method normalizes them to the base type
+        (e.g. "list", "map", "object") so downstream checks work correctly.
+
         Args:
             type_value: Type value from HCL (can be string or complex structure)
-            
+
         Returns:
             Normalized type string
         """
-        if isinstance(type_value, str):
-            return type_value
-        elif isinstance(type_value, list) and len(type_value) > 0:
+        if isinstance(type_value, list) and len(type_value) > 0:
             # Sometimes hcl2 returns types as lists
-            return str(type_value[0])
-        else:
-            # For complex types, convert to string representation
-            return str(type_value)
+            type_value = type_value[0]
+
+        raw = str(type_value)
+
+        # Match "${list(string)}" -> "list", "${map(number)}" -> "map", etc.
+        m = self._TYPE_PATTERN.match(raw)
+        if m:
+            return m.group(1)
+
+        # Strip ${ } wrapper if present (e.g. "${string}" -> "string")
+        if raw.startswith("${") and raw.endswith("}"):
+            return raw[2:-1]
+
+        return raw
     
     def parse_outputs(self) -> List[dict]:
         """

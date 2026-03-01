@@ -89,7 +89,7 @@ class TestInitCommand:
             assert f"-chdir={tf_dir}" in cmd
             assert "init" in cmd
             assert "-input=false" in cmd
-            assert "-no-color" in cmd
+            assert "-no-color" not in cmd
 
     def test_init_with_backend_config(self, runner):
         with patch.object(runner, "_execute", return_value=CommandResult(0, "", "", True, "init")) as mock_exec:
@@ -104,7 +104,7 @@ class TestValidateCommand:
             runner.validate()
             cmd = mock_exec.call_args[0][0]
             assert "validate" in cmd
-            assert "-no-color" in cmd
+            assert "-no-color" not in cmd
 
 
 class TestPlanCommand:
@@ -114,7 +114,7 @@ class TestPlanCommand:
             cmd = mock_exec.call_args[0][0]
             assert "plan" in cmd
             assert "-input=false" in cmd
-            assert "-no-color" in cmd
+            assert "-no-color" not in cmd
             assert "-var" in cmd
             assert "region=us-east-1" in cmd
 
@@ -138,7 +138,7 @@ class TestApplyCommand:
             cmd = mock_exec.call_args[0][0]
             assert "apply" in cmd
             assert "-input=false" in cmd
-            assert "-no-color" in cmd
+            assert "-no-color" not in cmd
             assert "-var" in cmd
             assert "region=us-east-1" in cmd
 
@@ -162,7 +162,7 @@ class TestDestroyCommand:
             cmd = mock_exec.call_args[0][0]
             assert "destroy" in cmd
             assert "-input=false" in cmd
-            assert "-no-color" in cmd
+            assert "-no-color" not in cmd
             assert "-var" in cmd
 
     def test_destroy_auto_approve(self, runner):

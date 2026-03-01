@@ -158,10 +158,10 @@ class MainWindow(QMainWindow):
         divider.setFrameShadow(QFrame.Shadow.Sunken)
         main_layout.addWidget(divider)
 
-        # --- Output viewer — fixed height with scrollbar ---
+        # --- Output viewer — scales with window, capped height, scrollbar ---
         self.output_viewer = OutputViewerWidget()
         self.output_viewer.setMinimumHeight(120)
-        self.output_viewer.setMaximumHeight(200)
+        self.output_viewer.setMaximumHeight(400)
         main_layout.addWidget(self.output_viewer)
 
         # --- Operation buttons row ---

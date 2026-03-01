@@ -172,7 +172,7 @@ class InputSanitizer:
             except ValueError:
                 raise SecurityError(f"Invalid number value: {value}")
         
-        elif var_type in ("list", "map", "object"):
+        elif var_type in ("list", "map", "object", "set", "tuple"):
             # For complex types, validate as JSON
             try:
                 if isinstance(value, str):

@@ -7,8 +7,8 @@ A Qt-based GUI for managing Terraform projects.
 
 ## Features
 
-- **Terraform lifecycle management** — run init, validate, plan, apply, and destroy from the GUI with real-time streamed output
-- **Variable editing** — type-aware input fields (string, number, bool, list/map/object) with validation, sensitive variable masking, and persistence of non-sensitive values
+- **Terraform lifecycle management** — run init, validate, plan, apply, and destroy from the GUI with real-time streamed output and ANSI color rendering (bold, colored text matching your terminal)
+- **Variable editing** — type-aware input fields (string, number, bool, list/map/object/set/tuple) with validation, sensitive variable masking, and persistence of non-sensitive values
 - **Workspace management** — create, switch, and delete Terraform workspaces via the Workspace menu
 - **State inspection** — view resources and outputs from Terraform state
 - **.tfvars import/export** — load variable values from `.tfvars` files or export current values

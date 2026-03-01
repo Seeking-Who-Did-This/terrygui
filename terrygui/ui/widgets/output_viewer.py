@@ -100,7 +100,7 @@ class OutputViewerWidget(QWidget):
         self._text_edit = QTextEdit()
         self._text_edit.setReadOnly(True)
         self._text_edit.setFont(QFont("Consolas", 10))
-        self._text_edit.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self._text_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         layout.addWidget(self._text_edit)
 
     @Slot(str)
@@ -125,8 +125,8 @@ class OutputViewerWidget(QWidget):
         self._line_count += 1
 
         if self._auto_scroll:
-            self._text_edit.setTextCursor(cursor)
-            self._text_edit.ensureCursorVisible()
+            scrollbar = self._text_edit.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
 
     def _insert_ansi_text(self, cursor: QTextCursor, text: str):
         """Parse ANSI escape codes and insert formatted text segments."""
