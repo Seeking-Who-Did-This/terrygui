@@ -49,6 +49,7 @@ jobs:
         pyinstaller --name=terrygui \
                     --windowed \
                     --onefile \
+                    --icon=terrygui/resources/icon.png \
                     --collect-data=hcl2 \
                     --collect-data=lark \
                     --add-data="terrygui:terrygui" \
@@ -60,6 +61,7 @@ jobs:
         pyinstaller --name=terrygui `
                     --windowed `
                     --onefile `
+                    --icon=terrygui/resources/icon.ico `
                     --collect-data=hcl2 `
                     --collect-data=lark `
                     --add-data="terrygui;terrygui" `
