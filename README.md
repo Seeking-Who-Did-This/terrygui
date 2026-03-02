@@ -7,14 +7,16 @@ A Qt-based GUI for managing Terraform projects.
 
 ## Features
 
-- **Terraform lifecycle management** — run init, validate, plan, apply, and destroy from the GUI with real-time streamed output and ANSI color rendering (bold, colored text matching your terminal)
+- **Multi-project tabs** — open multiple Terraform projects simultaneously, each in its own tab with fully isolated state, operations, and output; tabs restored on relaunch
+- **Per-project nicknames** — double-click a tab to assign a persistent display alias (stored in `.tfgui`), overriding the default folder name
+- **Terraform lifecycle management** — run init, validate, plan, apply, and destroy from the GUI with real-time streamed output and ANSI color rendering
 - **Variable editing** — type-aware input fields (string, number, bool, list/map/object/set/tuple) with validation, sensitive variable masking, and persistence of non-sensitive values
-- **Workspace management** — create, switch, and delete Terraform workspaces via the Workspace menu
+- **Workspace management** — create, switch, and delete Terraform workspaces via the Workspace menu; last workspace remembered per project
 - **State inspection** — view resources and outputs from Terraform state
 - **.tfvars import/export** — load variable values from `.tfvars` files or export current values
-- **Recent projects** — quick access to previously opened projects
+- **Recent projects** — quick access to previously opened projects via the File menu
 - **Preferences** — configurable editor command, Terraform binary path, and confirmation dialog toggles
-- **Keyboard shortcuts** — Init (Ctrl+I), Plan (Ctrl+P), Apply (Ctrl+Shift+A), Refresh (F5)
+- **Keyboard shortcuts** — Open (Ctrl+O), Init (Ctrl+I), Plan (Ctrl+P), Apply (Ctrl+Shift+A), Refresh (F5)
 - **Cross-platform** — runs on Linux and Windows, with pre-built binaries available
 - **Security-first design** — all subprocess calls use `shell=False`, inputs are validated against injection, sensitive values are redacted from output and never persisted
 
@@ -44,19 +46,20 @@ Download pre-built binaries from the [Releases](https://github.com/Seeking-Who-D
 
 ## Usage
 
-1. **Open a project** — File > Browse project (Ctrl+O), then select a directory containing `.tf` files
-2. **Review variables** — variables are parsed automatically; required fields are marked, sensitive fields are masked
-3. **Run operations** — click Init, then Plan/Apply/Destroy; output streams in real time
+1. **Open a project** — File > Open Terraform Project (Ctrl+O), then select a directory containing `.tf` files; opens in a new tab
+2. **Review variables** — variables are parsed automatically; required fields are marked, sensitive fields are masked; the info bar above the tabs shows workspace, variable count, and project path
+3. **Run operations** — click Init, then Plan/Apply/Destroy; output streams in real time in each tab independently
 4. **Manage workspaces** — use the Workspace menu to create, delete, or refresh workspaces
 5. **Import/export values** — File > Import .tfvars / Export .tfvars
 6. **Configure** — File > Edit Preferences to set editor command, Terraform binary, and confirmation toggles
+7. **Rename a tab** — double-click a tab to set a persistent nickname
 
 ### Project State
 
 TerryGUI stores per-project state in a `.tfgui` file (auto-added to `.gitignore`):
 - Last active workspace
 - Non-sensitive variable values
-- UI preferences
+- Optional tab nickname/alias
 
 ### Application Settings
 
@@ -69,6 +72,8 @@ Key settings:
 {
   "editor_command": "code",
   "terraform_binary": "terraform",
+  "open_projects": [],
+  "recent_projects": [],
   "confirmations": {
     "apply": true,
     "destroy": true,
@@ -76,6 +81,8 @@ Key settings:
   }
 }
 ```
+
+`open_projects` is updated on exit and used to restore the previous session's tabs on next launch.
 
 ## Security
 
@@ -95,11 +102,16 @@ terrygui/
 │   ├── core/                   # Parser, runner, workspace/state managers, tfvars handler
 │   ├── security/               # Input sanitizer, secure memory, output redactor
 │   ├── ui/
-│   │   ├── main_window.py      # Main application window
-│   │   ├── widgets/            # Variable inputs, output viewer, state viewer
+│   │   ├── main_window.py      # Tab host window (QTabWidget + landing page)
+│   │   ├── widgets/
+│   │   │   ├── project_pane.py   # Self-contained per-project widget
+│   │   │   ├── variable_input.py # Variable input widgets and panel
+│   │   │   ├── output_viewer.py  # ANSI output display
+│   │   │   ├── workspace_panel.py
+│   │   │   └── state_viewer.py
 │   │   └── dialogs/            # Confirm, workspace, settings dialogs
 │   └── utils/                  # Validators, logging, platform helpers
-└── tests/                      # 139 tests across 7 files
+└── tests/                      # 143 tests across 8 files
 ```
 
 ### Running Tests
