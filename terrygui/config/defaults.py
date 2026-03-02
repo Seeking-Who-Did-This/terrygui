@@ -11,6 +11,7 @@ DEFAULT_SETTINGS = {
     "recent_projects": [],
     "max_recent_projects": 10,
     "last_project_path": "",
+    "open_projects": [],   # list of paths restored on next launch
     
     # Editor configuration
     "editor_command": "code",

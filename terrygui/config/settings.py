@@ -187,12 +187,20 @@ class Settings:
     def get_last_project(self) -> Optional[str]:
         """
         Get the last opened project path.
-        
+
         Returns:
             Project path or None
         """
         path = self.get("last_project_path", "")
         return path if path else None
+
+    def get_open_projects(self) -> list:
+        """Get list of project paths open at last session."""
+        return self.get("open_projects", [])
+
+    def set_open_projects(self, paths: list):
+        """Persist list of currently open project paths."""
+        self.set("open_projects", paths)
     
     @staticmethod
     def _deep_update(base: dict, updates: dict):

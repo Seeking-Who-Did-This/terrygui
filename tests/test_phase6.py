@@ -250,33 +250,39 @@ class TestKeyboardShortcuts:
 
     @needs_qt
     def test_init_button_shortcut(self, qtbot):
-        from terrygui.ui.main_window import MainWindow
+        from terrygui.ui.widgets.project_pane import ProjectPane
+        from unittest.mock import MagicMock
 
-        with patch("terrygui.ui.main_window.validate_terraform_installed", return_value=(True, "1.0")):
-            window = MainWindow()
-            qtbot.addWidget(window)
+        settings = MagicMock()
+        settings.get.side_effect = lambda key, default=None: default
+        pane = ProjectPane(settings)
+        qtbot.addWidget(pane)
 
-        assert window.init_button.shortcut().toString() == "Ctrl+I"
+        assert pane.init_button.shortcut().toString() == "Ctrl+I"
 
     @needs_qt
     def test_plan_button_shortcut(self, qtbot):
-        from terrygui.ui.main_window import MainWindow
+        from terrygui.ui.widgets.project_pane import ProjectPane
+        from unittest.mock import MagicMock
 
-        with patch("terrygui.ui.main_window.validate_terraform_installed", return_value=(True, "1.0")):
-            window = MainWindow()
-            qtbot.addWidget(window)
+        settings = MagicMock()
+        settings.get.side_effect = lambda key, default=None: default
+        pane = ProjectPane(settings)
+        qtbot.addWidget(pane)
 
-        assert window.plan_button.shortcut().toString() == "Ctrl+P"
+        assert pane.plan_button.shortcut().toString() == "Ctrl+P"
 
     @needs_qt
     def test_apply_button_shortcut(self, qtbot):
-        from terrygui.ui.main_window import MainWindow
+        from terrygui.ui.widgets.project_pane import ProjectPane
+        from unittest.mock import MagicMock
 
-        with patch("terrygui.ui.main_window.validate_terraform_installed", return_value=(True, "1.0")):
-            window = MainWindow()
-            qtbot.addWidget(window)
+        settings = MagicMock()
+        settings.get.side_effect = lambda key, default=None: default
+        pane = ProjectPane(settings)
+        qtbot.addWidget(pane)
 
-        assert window.apply_button.shortcut().toString() == "Ctrl+Shift+A"
+        assert pane.apply_button.shortcut().toString() == "Ctrl+Shift+A"
 
 
 # ---------------------------------------------------------------------------

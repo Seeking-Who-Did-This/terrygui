@@ -49,6 +49,7 @@ class ProjectManager:
             "version": "1.0",
             "last_workspace": "default",
             "last_opened": None,
+            "nickname": "",   # Optional display alias for the tab title
             "variables": {},  # Non-sensitive variable values
             "ui_state": {
                 "debug_output_expanded": False,
@@ -150,6 +151,14 @@ class ProjectManager:
             except IOError as e:
                 logger.error(f"Failed to create .gitignore: {e}")
     
+    def get_nickname(self) -> str:
+        """Return the user-defined display alias, or '' if not set."""
+        return self._state.get("nickname", "")
+
+    def set_nickname(self, name: str):
+        """Set (or clear) the display alias. Pass '' to revert to folder name."""
+        self._state["nickname"] = name.strip()
+
     def get_last_workspace(self) -> str:
         """
         Get the last active workspace for this project.

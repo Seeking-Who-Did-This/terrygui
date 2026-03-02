@@ -229,11 +229,6 @@ class VariablesPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._header = QLabel("Variables")
-        self._header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._header.setStyleSheet("font-weight: bold; padding: 4px;")
-        layout.addWidget(self._header)
-
         # Scroll area for variable inputs
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
@@ -255,7 +250,6 @@ class VariablesPanel(QWidget):
 
         # Per-variable row height estimate (label + input + margins)
         self._row_height = 40
-        self._header_height = 30
 
     def load_variables(self, variables: list[TerraformVariable],
                        saved_values: Optional[dict] = None):
@@ -271,14 +265,9 @@ class VariablesPanel(QWidget):
         if not variables:
             self._empty_label.setText("No variables defined")
             self._empty_label.show()
-            self._header.setText("[ Project contains 0 variables ]")
             return
 
         self._empty_label.hide()
-        sensitive_count = sum(1 for v in variables if v.sensitive)
-        self._header.setText(
-            f"[ Project contains {len(variables)} variables ({sensitive_count} sensitive) ]"
-        )
 
         for var in variables:
             widget = VariableInputWidget(var)
@@ -300,11 +289,9 @@ class VariablesPanel(QWidget):
         """Set maximum height to fit content without excess empty space."""
         count = len(self._widgets)
         if count == 0:
-            self.setMaximumHeight(self._header_height + 60)  # placeholder text
+            self.setMaximumHeight(60)
         else:
-            self.setMaximumHeight(
-                self._header_height + (count * self._row_height) + 20
-            )
+            self.setMaximumHeight(count * self._row_height + 20)
 
     def clear(self):
         """Remove all variable input widgets."""
