@@ -52,9 +52,13 @@ class TestProjectPane:
         pane = ProjectPane(settings)
         qtbot.addWidget(pane)
 
-        # tmp_path is an empty dir — no .tf files
-        with pytest.raises(ValueError, match="Terraform project"):
-            pane.load_project(str(tmp_path))
+        # tmp_path is an empty dir — no .tf files.
+        # Patch sanitize_path so the CI temp dir isn't rejected by the
+        # allowlist before we reach the "no .tf files" check.
+        with patch("terrygui.ui.widgets.project_pane.InputSanitizer.sanitize_path",
+                   return_value=str(tmp_path)):
+            with pytest.raises(ValueError, match="Terraform project"):
+                pane.load_project(str(tmp_path))
 
     @needs_qt
     def test_pane_status_message_signal(self, qtbot, tmp_path):
@@ -71,7 +75,9 @@ class TestProjectPane:
         received = []
         pane.status_message.connect(received.append)
 
-        with patch("terrygui.ui.widgets.project_pane.TerraformRunner"), \
+        with patch("terrygui.ui.widgets.project_pane.InputSanitizer.sanitize_path",
+                   return_value=str(tmp_path)), \
+             patch("terrygui.ui.widgets.project_pane.TerraformRunner"), \
              patch("terrygui.ui.widgets.project_pane.WorkspaceManager"), \
              patch("terrygui.ui.widgets.project_pane.StateManager"):
             pane.load_project(str(tmp_path))
