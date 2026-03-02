@@ -153,6 +153,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
+        self.status_bar.messageChanged.connect(self._on_status_message_changed)
 
     def _create_landing_page(self) -> QWidget:
         widget = QWidget()
@@ -354,6 +355,14 @@ class MainWindow(QMainWindow):
         sender_pane = self.sender()
         if sender_pane is self._active_pane():
             self.status_bar.showMessage(msg)
+
+    def _on_status_message_changed(self, msg: str):
+        """Restore idle project status when the status bar is cleared by Qt hover events."""
+        if msg:
+            return
+        pane = self._active_pane()
+        if pane and pane.current_project_path and not pane.is_operation_running():
+            self.status_bar.showMessage(pane.get_status_text())
 
     def _on_tab_title_changed(self, pane: ProjectPane, title: str):
         for i in range(self._tab_widget.count()):
