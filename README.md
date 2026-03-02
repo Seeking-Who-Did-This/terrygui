@@ -2,6 +2,7 @@
 
 A Qt-based GUI for managing Terraform projects.
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 
@@ -47,7 +48,7 @@ Download pre-built binaries from the [Releases](https://github.com/Seeking-Who-D
 ## Usage
 
 1. **Open a project** — File > Open Terraform Project (Ctrl+O), then select a directory containing `.tf` files; opens in a new tab
-2. **Review variables** — variables are parsed automatically; required fields are marked, sensitive fields are masked; the info bar above the tabs shows workspace, variable count, and project path
+2. **Review variables** — variables are parsed automatically; required fields are marked, sensitive fields are masked; the status bar shows workspace, variable count, and project path
 3. **Run operations** — click Init, then Plan/Apply/Destroy; output streams in real time in each tab independently
 4. **Manage workspaces** — use the Workspace menu to create, delete, or refresh workspaces
 5. **Import/export values** — File > Import .tfvars / Export .tfvars
@@ -56,7 +57,7 @@ Download pre-built binaries from the [Releases](https://github.com/Seeking-Who-D
 
 ### Project State
 
-TerryGUI stores per-project state in a `.tfgui` file (auto-added to `.gitignore`):
+TerryGUI stores per-project state in a `.tfgui` file in the project directory (auto-added to `.gitignore`):
 - Last active workspace
 - Non-sensitive variable values
 - Optional tab nickname/alias
@@ -100,6 +101,7 @@ terrygui/
 ├── terrygui/
 │   ├── config/                 # Settings and defaults
 │   ├── core/                   # Parser, runner, workspace/state managers, tfvars handler
+│   ├── resources/              # Application icon (icon.png, icon.ico)
 │   ├── security/               # Input sanitizer, secure memory, output redactor
 │   ├── ui/
 │   │   ├── main_window.py      # Tab host window (QTabWidget + landing page)
@@ -130,6 +132,7 @@ pip install pyinstaller
 **Linux:**
 ```bash
 pyinstaller --name=terrygui --windowed --onefile \
+    --icon=terrygui/resources/icon.png \
     --collect-data=hcl2 --collect-data=lark \
     --add-data="terrygui:terrygui" main.py
 ```
@@ -137,6 +140,7 @@ pyinstaller --name=terrygui --windowed --onefile \
 **Windows (PowerShell):**
 ```powershell
 pyinstaller --name=terrygui --windowed --onefile `
+    --icon=terrygui/resources/icon.ico `
     --collect-data=hcl2 --collect-data=lark `
     --add-data="terrygui;terrygui" main.py
 ```
