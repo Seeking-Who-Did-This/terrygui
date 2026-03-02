@@ -111,8 +111,6 @@ class ProjectPane(QWidget):
     project_loaded = Signal(str)
     # Emitted when the tab label should change (project load or workspace switch)
     tab_title_changed = Signal(str)
-    # Emitted whenever the info bar text should update (workspace, vars, path)
-    pane_info_changed = Signal(str)
 
     # Internal signal for thread-safe output relay
     _relay_output = Signal(str)
@@ -365,7 +363,7 @@ class ProjectPane(QWidget):
             return
         self.project_manager.set_nickname(name)
         self.project_manager.save()
-        self.tab_title_changed.emit(self._tab_title_with_workspace())
+        self._update_info()
 
     def _tab_title_with_workspace(self) -> str:
         """Tab label incorporating workspace prefix when not on default."""
@@ -375,22 +373,15 @@ class ProjectPane(QWidget):
             return f"[{workspace}] {title}"
         return title
 
-    def get_info_text(self) -> str:
-        """Build the info bar string for this pane."""
-        if not self.current_project_path:
-            return ""
-        workspace = self._current_workspace()
-        parts = [f"Workspace: {workspace}"]
-        parts.append(
-            f"{self._var_count} variables ({self._sensitive_count} sensitive)"
-        )
-        parts.append(f"Project: {self.current_project_path}")
-        return "  |  ".join(parts)
-
     def _update_info(self):
-        self.pane_info_changed.emit(self.get_info_text())
         if self.current_project_path:
             self.tab_title_changed.emit(self._tab_title_with_workspace())
+            workspace = self._current_workspace()
+            nick = self.project_manager.get_nickname() if self.project_manager else ""
+            path_part = f"{nick}  —  {self.current_project_path}" if nick else self.current_project_path
+            self.status_message.emit(
+                f"Workspace: {workspace}  |  {self._var_count} variables ({self._sensitive_count} sensitive)  |  {path_part}"
+            )
 
     def _refresh_workspace_info(self):
         self._update_info()
@@ -540,9 +531,11 @@ class ProjectPane(QWidget):
             self._sensitive_count = sensitive_count
             logger.info(f"Parsed {var_count} variables ({sensitive_count} sensitive)")
 
+            nick = self.project_manager.get_nickname()
+            path_part = f"{nick}  —  {safe_path}" if nick else safe_path
             self.status_message.emit(
-                f"Project loaded | Variables: {var_count} ({sensitive_count} sensitive) | "
-                f"Workspace: {self.project_manager.get_last_workspace()}"
+                f"Project loaded  |  {var_count} variables ({sensitive_count} sensitive)  |  "
+                f"Workspace: {self.project_manager.get_last_workspace()}  |  {path_part}"
             )
         except Exception as e:
             logger.error(f"Failed to parse variables: {e}")

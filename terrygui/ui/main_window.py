@@ -130,15 +130,6 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Info bar — fixed below menu bar, above the tab widget
-        self._info_bar = QLabel()
-        self._info_bar.setFixedHeight(28)
-        self._info_bar.setStyleSheet(
-            "color: gray; padding: 2px 8px; background: palette(alternate-base);"
-        )
-        self._info_bar.setTextFormat(Qt.TextFormat.PlainText)
-        main_layout.addWidget(self._info_bar)
-
         # Stack: index 0 = landing page, index 1 = tab widget
         self._stack = QStackedWidget()
         main_layout.addWidget(self._stack)
@@ -302,7 +293,6 @@ class MainWindow(QMainWindow):
     def _new_tab(self, project_path: Optional[str] = None):
         pane = ProjectPane(self.settings, parent=self)
         pane.status_message.connect(self._on_pane_status_message)
-        pane.pane_info_changed.connect(self._on_pane_info_changed)
         pane.tab_title_changed.connect(
             lambda title, p=pane: self._on_tab_title_changed(p, title)
         )
@@ -333,10 +323,8 @@ class MainWindow(QMainWindow):
         pane = self._tab_widget.widget(index)
         if isinstance(pane, ProjectPane) and pane.current_project_path:
             self.setWindowTitle(f"{pane.get_tab_title()} — TerryGUI")
-            self._info_bar.setText(pane.get_info_text())
         else:
             self.setWindowTitle("TerryGUI - Terraform Manager")
-            self._info_bar.clear()
 
     def _on_tab_close_requested(self, index: int):
         pane = self._tab_widget.widget(index)
@@ -359,16 +347,11 @@ class MainWindow(QMainWindow):
         if self._tab_widget.count() == 0:
             self._stack.setCurrentIndex(0)
             self.setWindowTitle("TerryGUI - Terraform Manager")
-            self._info_bar.clear()
 
     def _on_pane_status_message(self, msg: str):
         sender_pane = self.sender()
         if sender_pane is self._active_pane():
             self.status_bar.showMessage(msg)
-
-    def _on_pane_info_changed(self, text: str):
-        if self.sender() is self._active_pane():
-            self._info_bar.setText(text)
 
     def _on_tab_title_changed(self, pane: ProjectPane, title: str):
         for i in range(self._tab_widget.count()):
