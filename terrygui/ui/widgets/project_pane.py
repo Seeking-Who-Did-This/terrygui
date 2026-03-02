@@ -373,15 +373,23 @@ class ProjectPane(QWidget):
             return f"[{workspace}] {title}"
         return title
 
+    def get_status_text(self) -> str:
+        """Return the current status bar string for this pane (workspace + vars + path)."""
+        if not self.current_project_path:
+            return ""
+        workspace = self._current_workspace()
+        nick = self.project_manager.get_nickname() if self.project_manager else ""
+        path_part = f"{nick}  —  {self.current_project_path}" if nick else self.current_project_path
+        return (
+            f"Workspace: {workspace}  |  "
+            f"{self._var_count} variables ({self._sensitive_count} sensitive)  |  "
+            f"{path_part}"
+        )
+
     def _update_info(self):
         if self.current_project_path:
             self.tab_title_changed.emit(self._tab_title_with_workspace())
-            workspace = self._current_workspace()
-            nick = self.project_manager.get_nickname() if self.project_manager else ""
-            path_part = f"{nick}  —  {self.current_project_path}" if nick else self.current_project_path
-            self.status_message.emit(
-                f"Workspace: {workspace}  |  {self._var_count} variables ({self._sensitive_count} sensitive)  |  {path_part}"
-            )
+            self.status_message.emit(self.get_status_text())
 
     def _refresh_workspace_info(self):
         self._update_info()
@@ -531,12 +539,7 @@ class ProjectPane(QWidget):
             self._sensitive_count = sensitive_count
             logger.info(f"Parsed {var_count} variables ({sensitive_count} sensitive)")
 
-            nick = self.project_manager.get_nickname()
-            path_part = f"{nick}  —  {safe_path}" if nick else safe_path
-            self.status_message.emit(
-                f"Project loaded  |  {var_count} variables ({sensitive_count} sensitive)  |  "
-                f"Workspace: {self.project_manager.get_last_workspace()}  |  {path_part}"
-            )
+            self.status_message.emit(f"Project loaded  |  {self.get_status_text()}")
         except Exception as e:
             logger.error(f"Failed to parse variables: {e}")
             QMessageBox.warning(

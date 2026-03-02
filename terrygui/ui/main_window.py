@@ -323,6 +323,8 @@ class MainWindow(QMainWindow):
         pane = self._tab_widget.widget(index)
         if isinstance(pane, ProjectPane) and pane.current_project_path:
             self.setWindowTitle(f"{pane.get_tab_title()} — TerryGUI")
+            if not pane.is_operation_running():
+                self.status_bar.showMessage(pane.get_status_text())
         else:
             self.setWindowTitle("TerryGUI - Terraform Manager")
 
