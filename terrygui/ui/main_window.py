@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
         edit_action = QAction("&Edit project in editor", self)
         edit_action.setShortcut("Ctrl+E")
         edit_action.triggered.connect(
-            lambda: self._active_pane() and self._active_pane()._on_edit_project()
+            lambda: self._active_pane() and self._active_pane().on_edit_project()
         )
         file_menu.addAction(edit_action)
 
@@ -193,13 +193,13 @@ class MainWindow(QMainWindow):
 
         import_action = QAction("&Import .tfvars...", self)
         import_action.triggered.connect(
-            lambda: self._active_pane() and self._active_pane()._on_import_tfvars()
+            lambda: self._active_pane() and self._active_pane().on_import_tfvars()
         )
         file_menu.addAction(import_action)
 
         export_action = QAction("&Export .tfvars...", self)
         export_action.triggered.connect(
-            lambda: self._active_pane() and self._active_pane()._on_export_tfvars()
+            lambda: self._active_pane() and self._active_pane().on_export_tfvars()
         )
         file_menu.addAction(export_action)
 

@@ -140,6 +140,16 @@ class StateViewerWidget(QWidget):
         details = self._manager.get_resource_details(address)
         self._detail_view.setPlainText(details)
 
+    def show_resources_view(self):
+        """Switch to the Resources view."""
+        self._resources_button.setChecked(True)
+        self._on_view_toggled(0)
+
+    def show_outputs_view(self):
+        """Switch to the Outputs view."""
+        self._outputs_button.setChecked(True)
+        self._on_view_toggled(1)
+
     def _on_view_toggled(self, button_id: int):
         """Switch between Resources and Outputs view."""
         if button_id == 0:

@@ -4,7 +4,7 @@ Follows the same guard/pattern as test_widgets.py.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -15,24 +15,14 @@ except ImportError:
 needs_qt = pytest.mark.skipif(not _HAS_QT, reason="PySide6 not available")
 
 
-def _make_settings():
-    """Return a minimal Settings-like mock."""
-    settings = MagicMock()
-    settings.get.side_effect = lambda key, default=None: default
-    settings.get_open_projects.return_value = []
-    settings.get_last_project.return_value = None
-    return settings
-
-
 class TestProjectPane:
 
     @needs_qt
-    def test_pane_initial_state(self, qtbot):
+    def test_pane_initial_state(self, qtbot, mock_settings):
         """No project loaded → all operation buttons disabled."""
         from terrygui.ui.widgets.project_pane import ProjectPane
 
-        settings = _make_settings()
-        pane = ProjectPane(settings)
+        pane = ProjectPane(mock_settings)
         qtbot.addWidget(pane)
 
         assert pane.current_project_path is None
@@ -44,12 +34,11 @@ class TestProjectPane:
         assert not pane.cancel_button.isEnabled()
 
     @needs_qt
-    def test_pane_load_invalid_path(self, qtbot, tmp_path):
+    def test_pane_load_invalid_path(self, qtbot, tmp_path, mock_settings):
         """Loading a non-Terraform directory raises ValueError."""
         from terrygui.ui.widgets.project_pane import ProjectPane
 
-        settings = _make_settings()
-        pane = ProjectPane(settings)
+        pane = ProjectPane(mock_settings)
         qtbot.addWidget(pane)
 
         # tmp_path is an empty dir — no .tf files.
@@ -61,15 +50,14 @@ class TestProjectPane:
                 pane.load_project(str(tmp_path))
 
     @needs_qt
-    def test_pane_status_message_signal(self, qtbot, tmp_path):
+    def test_pane_status_message_signal(self, qtbot, tmp_path, mock_settings):
         """status_message signal is emitted after a successful project load."""
         from terrygui.ui.widgets.project_pane import ProjectPane
 
         # Create a minimal .tf file so the directory passes validation
         (tmp_path / "main.tf").write_text('variable "region" {}')
 
-        settings = _make_settings()
-        pane = ProjectPane(settings)
+        pane = ProjectPane(mock_settings)
         qtbot.addWidget(pane)
 
         received = []
@@ -86,12 +74,11 @@ class TestProjectPane:
             f"Expected 'Project loaded' in signals, got: {received}"
 
     @needs_qt
-    def test_pane_save_state_no_project(self, qtbot):
+    def test_pane_save_state_no_project(self, qtbot, mock_settings):
         """save_state() is a safe no-op when no project is loaded."""
         from terrygui.ui.widgets.project_pane import ProjectPane
 
-        settings = _make_settings()
-        pane = ProjectPane(settings)
+        pane = ProjectPane(mock_settings)
         qtbot.addWidget(pane)
 
         # Should not raise

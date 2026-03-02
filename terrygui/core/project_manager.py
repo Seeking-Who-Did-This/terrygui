@@ -177,6 +177,10 @@ class ProjectManager:
         """
         self._state["last_workspace"] = workspace
     
+    def get_saved_variable_values(self) -> Dict[str, Any]:
+        """Return all previously saved non-sensitive variable values."""
+        return self._state.get("variables", {})
+
     def get_variable_value(self, var_name: str) -> Optional[Any]:
         """
         Get saved variable value (non-sensitive only).

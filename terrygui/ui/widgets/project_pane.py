@@ -373,18 +373,23 @@ class ProjectPane(QWidget):
             return f"[{workspace}] {title}"
         return title
 
-    def get_status_text(self) -> str:
-        """Return the current status bar string for this pane (workspace + vars + path)."""
+    def get_status_text(self, prefix: str = "") -> str:
+        """Return the current status bar string for this pane (workspace + vars + path).
+
+        Args:
+            prefix: Optional prefix prepended as "prefix  |  <status>".
+        """
         if not self.current_project_path:
-            return ""
+            return prefix
         workspace = self._current_workspace()
         nick = self.project_manager.get_nickname() if self.project_manager else ""
         path_part = f"{nick}  —  {self.current_project_path}" if nick else self.current_project_path
-        return (
+        status = (
             f"Workspace: {workspace}  |  "
             f"{self._var_count} variables ({self._sensitive_count} sensitive)  |  "
             f"{path_part}"
         )
+        return f"{prefix}  |  {status}" if prefix else status
 
     def _update_info(self):
         if self.current_project_path:
@@ -454,15 +459,13 @@ class ProjectPane(QWidget):
 
     def _show_state_viewer(self):
         dialog = self._get_or_create_state_dialog()
-        dialog._viewer._resources_button.setChecked(True)
-        dialog._viewer._on_view_toggled(0)
+        dialog._viewer.show_resources_view()
         dialog.show()
         dialog.raise_()
 
     def _show_outputs_viewer(self):
         dialog = self._get_or_create_state_dialog()
-        dialog._viewer._outputs_button.setChecked(True)
-        dialog._viewer._on_view_toggled(1)
+        dialog._viewer.show_outputs_view()
         dialog.show()
         dialog.raise_()
 
@@ -530,7 +533,7 @@ class ProjectPane(QWidget):
 
         try:
             variables = self.terraform_parser.parse_variables()
-            saved_values = self.project_manager._state.get("variables", {})
+            saved_values = self.project_manager.get_saved_variable_values()
             self.variables_panel.load_variables(variables, saved_values)
 
             var_count = len(variables)
@@ -539,7 +542,7 @@ class ProjectPane(QWidget):
             self._sensitive_count = sensitive_count
             logger.info(f"Parsed {var_count} variables ({sensitive_count} sensitive)")
 
-            self.status_message.emit(f"Project loaded  |  {self.get_status_text()}")
+            self.status_message.emit(self.get_status_text(prefix="Project loaded"))
         except Exception as e:
             logger.error(f"Failed to parse variables: {e}")
             QMessageBox.warning(
@@ -548,14 +551,13 @@ class ProjectPane(QWidget):
             )
 
         self._update_button_states()
-        self._update_info()
+        self._update_info()  # emits tab_title_changed + status_message
 
         self.settings.add_recent_project(safe_path)
         self.settings.set_last_project(safe_path)
         self.settings.save()
 
         self.project_loaded.emit(safe_path)
-        self.tab_title_changed.emit(self.get_tab_title())
 
         logger.info(f"Loaded project: {safe_path}")
 
@@ -563,7 +565,7 @@ class ProjectPane(QWidget):
     # Misc
     # ------------------------------------------------------------------
 
-    def _on_edit_project(self):
+    def on_edit_project(self):
         if not self.current_project_path:
             return
 
@@ -603,7 +605,7 @@ class ProjectPane(QWidget):
     # Import / Export .tfvars
     # ------------------------------------------------------------------
 
-    def _on_import_tfvars(self):
+    def on_import_tfvars(self):
         from PySide6.QtWidgets import QFileDialog
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -626,7 +628,7 @@ class ProjectPane(QWidget):
                 f"Failed to import .tfvars file:\n{str(e)}",
             )
 
-    def _on_export_tfvars(self):
+    def on_export_tfvars(self):
         from PySide6.QtWidgets import QFileDialog
         file_path, _ = QFileDialog.getSaveFileName(
             self,
