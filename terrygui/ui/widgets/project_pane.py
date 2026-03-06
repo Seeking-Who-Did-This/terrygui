@@ -11,7 +11,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QMessageBox, QCheckBox, QFrame, QDialog,
+    QLabel, QPushButton, QMessageBox, QCheckBox, QFrame, QDialog, QSplitter,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 
@@ -150,21 +150,22 @@ class ProjectPane(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Variables panel
+        # Vertical splitter: variables on top, output below
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setChildrenCollapsible(False)
+
         self.variables_panel = VariablesPanel()
-        main_layout.addWidget(self.variables_panel, stretch=1)
+        splitter.addWidget(self.variables_panel)
 
-        # Visual divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setFrameShadow(QFrame.Shadow.Sunken)
-        main_layout.addWidget(divider)
-
-        # Output viewer
         self.output_viewer = OutputViewerWidget()
         self.output_viewer.setMinimumHeight(120)
-        self.output_viewer.setMaximumHeight(400)
-        main_layout.addWidget(self.output_viewer)
+        splitter.addWidget(self.output_viewer)
+
+        # Variables gets ~2/3, output gets ~1/3 of initial space
+        splitter.setStretchFactor(0, 2)
+        splitter.setStretchFactor(1, 1)
+
+        main_layout.addWidget(splitter)
 
         # Operation buttons row
         buttons_layout = QHBoxLayout()

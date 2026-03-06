@@ -45,9 +45,6 @@ class _AutoResizingTextEdit(QTextEdit):
         new_height = max(_TEXT_EDIT_MIN_HEIGHT, min(doc_height, _TEXT_EDIT_MAX_HEIGHT))
         if self.height() != new_height:
             self.setFixedHeight(new_height)
-            # Notify parent layout to re-fit
-            if self.parent():
-                self.parent().adjustSize()
 
 
 class VariableInputWidget(QWidget):
