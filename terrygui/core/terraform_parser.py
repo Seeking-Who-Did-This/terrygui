@@ -35,15 +35,20 @@ class TerraformVariable:
     description: str = ""
     sensitive: bool = False
     validation: Optional[dict] = None
-    
+    has_default: bool = False
+
     def is_required(self) -> bool:
         """
         Check if variable is required (has no default).
-        
+
+        A variable with ``default = null`` is NOT required — it has an explicit
+        default and Terraform will accept it without a value being supplied.
+        Only variables with no ``default`` key at all are truly required.
+
         Returns:
             True if variable must be provided
         """
-        return self.default is None
+        return not self.has_default
     
     def __repr__(self) -> str:
         return (
@@ -154,8 +159,9 @@ class TerraformParser:
         # Extract type (default to string if not specified)
         var_type = self._extract_type(config.get('type', 'string'))
 
-        # Extract default value
-        default = self._unwrap(config.get('default')) if 'default' in config else None
+        # Extract default value — distinguish "no default key" from "default = null"
+        has_default = 'default' in config
+        default = self._unwrap(config.get('default')) if has_default else None
 
         # Extract description
         description = self._unwrap(config.get('description', ''))
@@ -172,7 +178,8 @@ class TerraformParser:
             default=default,
             description=description,
             sensitive=sensitive,
-            validation=validation
+            validation=validation,
+            has_default=has_default,
         )
     
     @staticmethod

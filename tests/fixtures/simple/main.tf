@@ -22,6 +22,12 @@ variable "api_key" {
   description = "API key for external service"
 }
 
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID. Leave null to use default VPC."
+  default     = null
+}
+
 resource "null_resource" "example" {
   triggers = {
     region = var.region

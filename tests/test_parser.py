@@ -19,13 +19,14 @@ def test_parser_finds_variables(simple_project_path):
     """Test that parser finds all variables in simple project."""
     parser = TerraformParser(simple_project_path)
     variables = parser.parse_variables()
-    
-    assert len(variables) == 4
+
+    assert len(variables) == 5
     var_names = [v.name for v in variables]
     assert "region" in var_names
     assert "instance_type" in var_names
     assert "enable_monitoring" in var_names
     assert "api_key" in var_names
+    assert "vpc_id" in var_names
 
 
 def test_parser_detects_sensitive(simple_project_path):
@@ -86,6 +87,18 @@ def test_parser_handles_empty_directory(tmp_path):
     variables = parser.parse_variables()
     
     assert len(variables) == 0
+
+
+def test_parser_null_default_is_not_required(simple_project_path):
+    """Variables with default = null are optional, not required."""
+    parser = TerraformParser(simple_project_path)
+    variables = parser.parse_variables()
+
+    vpc_id_var = next((v for v in variables if v.name == "vpc_id"), None)
+    assert vpc_id_var is not None
+    assert vpc_id_var.has_default is True
+    assert vpc_id_var.default is None
+    assert vpc_id_var.is_required() is False
 
 
 def test_parser_syntax_validation(simple_project_path):
