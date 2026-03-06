@@ -13,13 +13,41 @@ from PySide6.QtWidgets import (
     QLineEdit, QCheckBox, QTextEdit, QToolButton,
     QScrollArea, QFrame, QSizePolicy,
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QIntValidator, QDoubleValidator
 
 from ...core.terraform_parser import TerraformVariable
 from ...security.sanitizer import InputSanitizer, SecurityError
 
 logger = logging.getLogger(__name__)
+
+_TEXT_EDIT_MIN_HEIGHT = 60
+_TEXT_EDIT_MAX_HEIGHT = 400
+
+
+class _AutoResizingTextEdit(QTextEdit):
+    """QTextEdit that grows/shrinks vertically to fit its content."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setMinimumHeight(_TEXT_EDIT_MIN_HEIGHT)
+        self.setMaximumHeight(_TEXT_EDIT_MAX_HEIGHT)
+        self.document().contentsChanged.connect(self._adjust_height)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Defer so the document layout is complete before measuring
+        QTimer.singleShot(0, self._adjust_height)
+
+    def _adjust_height(self):
+        doc_height = int(self.document().size().height()) + 10  # padding
+        new_height = max(_TEXT_EDIT_MIN_HEIGHT, min(doc_height, _TEXT_EDIT_MAX_HEIGHT))
+        if self.height() != new_height:
+            self.setFixedHeight(new_height)
+            # Notify parent layout to re-fit
+            if self.parent():
+                self.parent().adjustSize()
 
 
 class VariableInputWidget(QWidget):
@@ -107,9 +135,8 @@ class VariableInputWidget(QWidget):
             layout.addWidget(self._input)
 
         elif var_type in ("list", "map", "object", "set", "tuple"):
-            self._input = QTextEdit()
+            self._input = _AutoResizingTextEdit()
             self._input.setPlaceholderText(f'{var_type} (JSON format)')
-            self._input.setMaximumHeight(80)
             self._input.textChanged.connect(
                 lambda: self._on_text_changed(self._input.toPlainText())
             )
@@ -248,8 +275,6 @@ class VariablesPanel(QWidget):
         self._empty_label.setStyleSheet("color: gray; padding: 20px;")
         self._container_layout.insertWidget(0, self._empty_label)
 
-        # Per-variable row height estimate (label + input + margins)
-        self._row_height = 40
 
     def load_variables(self, variables: list[TerraformVariable],
                        saved_values: Optional[dict] = None):
@@ -287,11 +312,10 @@ class VariablesPanel(QWidget):
 
     def _update_max_height(self):
         """Set maximum height to fit content without excess empty space."""
-        count = len(self._widgets)
-        if count == 0:
+        if len(self._widgets) == 0:
             self.setMaximumHeight(60)
         else:
-            self.setMaximumHeight(count * self._row_height + 20)
+            self.setMaximumHeight(16777215)  # Qt default (no cap)
 
     def clear(self):
         """Remove all variable input widgets."""
