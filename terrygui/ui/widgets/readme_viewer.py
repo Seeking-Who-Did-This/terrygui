@@ -11,9 +11,8 @@ import logging
 from typing import Optional
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QTextBrowser, QSizePolicy,
+    QWidget, QVBoxLayout, QTextBrowser, QSizePolicy,
 )
-from PySide6.QtCore import Qt
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +37,6 @@ class ReadmeViewerWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 2)
         layout.setSpacing(2)
-
-        header = QLabel("README.md")
-        header.setStyleSheet("font-weight: bold; color: palette(mid); padding: 1px 0px;")
-        header.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        layout.addWidget(header)
 
         self._browser = QTextBrowser()
         self._browser.setOpenExternalLinks(True)
