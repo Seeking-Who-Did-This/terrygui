@@ -10,8 +10,9 @@ A Qt-based GUI for managing Terraform projects.
 
 - **Multi-project tabs** — open multiple Terraform projects simultaneously, each in its own tab with fully isolated state, operations, and output; tabs restored on relaunch
 - **Per-project nicknames** — double-click a tab to assign a persistent display alias (stored in `.tfgui`), overriding the default folder name
+- **README viewer** — if the project contains a `README.md`, it is rendered as formatted markdown in a resizable pane alongside the variables panel; code blocks are displayed with syntax highlighting and a distinct background
 - **Terraform lifecycle management** — run init, validate, plan, apply, and destroy from the GUI with real-time streamed output and ANSI color rendering
-- **Variable editing** — type-aware input fields (string, number, bool, list/map/object/set/tuple) with validation, sensitive variable masking, and persistence of non-sensitive values
+- **Variable editing** — type-aware input fields (string, number, bool, list/map/object/set/tuple) with validation, sensitive variable masking, and persistence of non-sensitive values; required and sensitive fields are visually highlighted
 - **Workspace management** — create, switch, and delete Terraform workspaces via the Workspace menu; last workspace remembered per project
 - **State inspection** — view resources and outputs from Terraform state
 - **.tfvars import/export** — load variable values from `.tfvars` files or export current values
@@ -48,12 +49,40 @@ Download pre-built binaries from the [Releases](https://github.com/Seeking-Who-D
 ## Usage
 
 1. **Open a project** — File > Open Terraform Project (Ctrl+O), then select a directory containing `.tf` files; opens in a new tab
-2. **Review variables** — variables are parsed automatically; required fields are marked, sensitive fields are masked; the status bar shows workspace, variable count, and project path
-3. **Run operations** — click Init, then Plan/Apply/Destroy; output streams in real time in each tab independently
-4. **Manage workspaces** — use the Workspace menu to create, delete, or refresh workspaces
-5. **Import/export values** — File > Import .tfvars / Export .tfvars
-6. **Configure** — File > Edit Preferences to set editor command, Terraform binary, and confirmation toggles
-7. **Rename a tab** — double-click a tab to set a persistent nickname
+2. **Review the README** — if the project contains a `README.md`, it is automatically rendered in a pane to the right of the variables panel; the pane can be resized or collapsed by dragging the splitter
+3. **Review variables** — variables are parsed automatically; required fields are bold with a highlighted background, sensitive fields are masked; the status bar shows workspace, variable count, and project path
+
+   > **Complex variable types (list/map/object/set/tuple):** TerryGUI uses a multi-line text box for these and validates input as **JSON** — not HCL. If you are copying a value from a `.tfvars` file, you must convert the HCL syntax to JSON first.
+   >
+   > | HCL (`.tfvars`) | JSON (TerryGUI input) |
+   > |---|---|
+   > | Keys unquoted, `=` separator, trailing commas OK, `#` comments OK | Keys must be quoted, `:` separator, no trailing commas, no comments |
+   >
+   > **Example — HCL in `.tfvars`:**
+   > ```hcl
+   > servers = {
+   >   "web-server" = {
+   >     instance_type = "t3.micro"
+   >     allowed_ips   = ["10.0.0.1/32"]
+   >   }
+   > }
+   > ```
+   > **Paste into TerryGUI as JSON:**
+   > ```json
+   > {
+   >   "web-server": {
+   >     "instance_type": "t3.micro",
+   >     "allowed_ips": ["10.0.0.1/32"]
+   >   }
+   > }
+   > ```
+   > A green checkmark appears once the JSON is valid. Use File > Import .tfvars to auto-populate variables from a file without manual conversion.
+
+4. **Run operations** — click Init, then Plan/Apply/Destroy; output streams in real time in each tab independently
+5. **Manage workspaces** — use the Workspace menu to create, delete, or refresh workspaces
+6. **Import/export values** — File > Import .tfvars / Export .tfvars
+7. **Configure** — File > Edit Preferences to set editor command, Terraform binary, and confirmation toggles
+8. **Rename a tab** — double-click a tab to set a persistent nickname
 
 ### Project State
 
@@ -87,6 +116,10 @@ Key settings:
 
 ## Security
 
+> **Only open Terraform projects from sources you trust.**
+>
+> TerryGUI renders the project's `README.md` as HTML inside the application window. A maliciously crafted or tampered README could attempt to exploit the Qt rendering engine or embed misleading content. Additionally, Terraform project files (`.tf`, `.tfvars`) are passed directly to the Terraform CLI — opening an untrusted project could result in unintended infrastructure changes. Always verify the provenance of a project before opening it.
+
 - **Input validation** — path traversal prevention, command injection protection, variable name/value sanitization, workspace name validation
 - **Sensitive data** — never persisted to disk, redacted from command output, password-masked in the UI, cleared from memory on exit
 - **Process isolation** — `shell=False` on all subprocess calls, argument validation, timeouts, hidden console windows on Windows
@@ -108,6 +141,7 @@ terrygui/
 │   │   ├── widgets/
 │   │   │   ├── project_pane.py   # Self-contained per-project widget
 │   │   │   ├── variable_input.py # Variable input widgets and panel
+│   │   │   ├── readme_viewer.py  # README.md markdown renderer
 │   │   │   ├── output_viewer.py  # ANSI output display
 │   │   │   ├── workspace_panel.py
 │   │   │   └── state_viewer.py
@@ -156,6 +190,8 @@ The `--collect-data` flags are required to bundle the HCL grammar files used by 
 **Editor won't open** — set the full path to your editor in File > Edit Preferences (e.g. `C:\Program Files\...`).
 
 **Variables not parsed in compiled binary** — ensure the build includes `--collect-data=hcl2 --collect-data=lark`.
+
+**README not displayed** — the file must be named `README.md` (or `readme.md` / `Readme.md`) and located directly in the project root directory.
 
 ## License
 
